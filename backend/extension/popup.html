@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 300px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 15px;
+      background: #0f172a;
+      color: white;
+    }
+    h2 { font-size: 1.1rem; margin-top: 0; color: #38bdf8; }
+    .btn {
+      background: #38bdf8;
+      color: white;
+      border: none;
+      padding: 10px;
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn:hover { background: #0ea5e9; }
+    #result {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .loader {
+      display: none;
+      text-align: center;
+      margin: 10px 0;
+    }
+    .sentiment-Positive { color: #10b981; }
+    .sentiment-Negative { color: #ef4444; }
+    .sentiment-Neutral { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <h2>Sentiment AI Assistant</h2>
+  <p style="font-size: 0.8rem; opacity: 0.8;">Analyze the current page content.</p>
+  <button id="analyzeBtn" class="btn">Analyze This Page</button>
+  <div id="loader" class="loader">Analyzing...</div>
+  <div id="result">
+    <div id="sentimentLabel" style="font-weight: bold; font-size: 1.2rem; margin-bottom: 5px;"></div>
+    <div id="summary" style="opacity: 0.9;"></div>
+    <hr style="opacity: 0.1; margin: 10px 0;">
+    <a id="fullLink" href="http://localhost:5173" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 0.75rem;">View Full Report →</a>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Loại bỏ các file nén nặng
+*.zip
+*.rar
+*.7z
+
+# Loại bỏ dữ liệu và kết quả huấn luyện (thường rất nặng)
+backend/data/
+backend/checkpoints/
+backend/results/
+
+# Loại bỏ các file tạm của Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Loại bỏ môi trường ảo
+venv/
+env/
+.env
+
+# Loại bỏ các file của IDE
+.vscode/
+.idea/
+
+# Loại bỏ node_modules nếu có làm frontend
+node_modules/
