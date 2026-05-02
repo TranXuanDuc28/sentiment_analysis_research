@@ -18,6 +18,7 @@ def save_model(model, path):
 def load_model_weights(model, path, device="cuda"):
     if os.path.exists(path):
         model.load_state_dict(torch.load(path, map_location=device))
+        model.to(device)
         print(f"📂 Đã load checkpoint từ: {path}")
         return model
     else:

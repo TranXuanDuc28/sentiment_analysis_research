@@ -30,7 +30,7 @@ class BaseModel(nn.Module):
         outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
         pooled_output = outputs.last_hidden_state[:, 0, :]
         logits = self.sentiment_head(pooled_output)
-        return logits
+        return logits, None
 
 class DANNModel(nn.Module):
     """Mô hình Domain Adversarial Neural Network"""

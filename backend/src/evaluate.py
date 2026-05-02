@@ -27,6 +27,7 @@ def print_dataset_statistics(texts, labels, domain_name="Unknown"):
     print("=" * 45)
 
 def evaluate_model(model, dataloader, device="cuda", scenario_name="Unknown"):
+    model.to(device)
     model.eval()
     all_preds = []
     all_labels = []
