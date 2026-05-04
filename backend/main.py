@@ -191,5 +191,45 @@ def main():
             improvement = res_s6["f1_macro"] - global_results["S4b"]["f1_macro"]
             print(f"\n🚀 INSIGHT: Việc học đa nguồn (Hybrid) giúp Adaptation hiệu quả hơn {improvement*100:.2f}% so với học đơn nguồn (S4b).")
 
+    # 7. SCENARIO 7: The Universal Model (Multilingual + Multidomain)
+    if args.s in [0, 7]:
+        print_banner("Scenario 7: The Universal Model (EN Books + EN Elec + VI VSFC)")
+        tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+        
+        # Mix 3 sources equally
+        n_per_source = config["scenarios"]["max_samples_train"] // 3
+        t1, l1, d1 = load_amazon_split("english", "books", "train", max_samples=n_per_source)
+        t2, l2, d2 = load_amazon_split("english", "electronics", "train", max_samples=n_per_source)
+        t3, l3, d3 = load_vsfc("train", max_samples=n_per_source)
+        
+        t_all, l_all, d_all = t1 + t2 + t3, l1 + l2 + l3, d1 + d2 + d3
+        t_train, t_val, l_train, l_val, d_train, d_val = train_test_split(t_all, l_all, d_all, test_size=0.1, random_state=42)
+        
+        train_loader = make_dataloader(t_train, l_train, d_train, tokenizer, batch_size=config["training"]["batch_size"], shuffle=True)
+        val_loader = make_dataloader(t_val, l_val, d_val, tokenizer, batch_size=config["training"]["batch_size"])
+        
+        model_universal = BaseModel(config["model"]["name"])
+        weights = compute_class_weights(l_train)
+        model_universal = train_model(model_universal, tokenizer, train_loader, val_loader=val_loader, num_epochs=int(config["training"]["epochs"]), device=device, class_weights=weights)
+        
+        # Test 1: On Vietnamese
+        print("\nTesting Universal Model on Vietnamese...")
+        test_vi_t, test_vi_l, test_vi_d = load_vsfc("test", max_samples=MAX_TEST)
+        test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, tokenizer, batch_size=config["training"]["batch_size"])
+        res_s7_vi = evaluate_model(model_universal, test_loader_vi, device, "S7_Universal_VI")
+        
+        # Test 2: On Unseen English Domain (Apparel)
+        print("\nTesting Universal Model on Unseen English Domain (Apparel)...")
+        test_en_t, test_en_l, test_en_d = load_amazon_split("english", "apparel", "test", max_samples=MAX_TEST)
+        test_loader_en = make_dataloader(test_en_t, test_en_l, test_en_d, tokenizer, batch_size=config["training"]["batch_size"])
+        res_s7_en = evaluate_model(model_universal, test_loader_en, device, "S7_Universal_EN_Unseen")
+        
+        print("\n📊 FINAL RESEARCH ANALYSIS:")
+        try:
+            # So sánh với S5 (Joint VI)
+            print(f"1. Synergy: So với học đơn miền (S5), việc thêm đa miền giúp tiếng Việt thay đổi { (res_s7_vi['f1_macro'] - res_s5_vi['f1_macro'])*100:.2f}% F1.")
+        except: pass
+        print(f"2. Cross-lingual Robustness: Mô hình Universal đạt {res_s7_en['f1_macro']*100:.2f}% F1 trên miền chưa từng thấy (Apparel).")
+
 if __name__ == "__main__":
     main()
