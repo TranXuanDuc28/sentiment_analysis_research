@@ -27,6 +27,14 @@ def rating_to_sentiment_amazon(rating: int) -> int:
     elif rating == 3: return 1
     else: return 2
 
+def word_segment_vietnamese(texts):
+    """Tách từ tiếng Việt cho PhoBERT"""
+    try:
+        from underthesea import word_tokenize
+        return [word_tokenize(t, format="text") for t in texts]
+    except ImportError:
+        return texts
+
 class SentimentDataset(Dataset):
     def __init__(self, texts, labels, domain_ids, tokenizer, max_length=128):
         self.texts = texts

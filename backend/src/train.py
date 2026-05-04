@@ -13,46 +13,62 @@ def compute_class_weights(labels):
     weights = compute_class_weight(class_weight='balanced', classes=np.unique(valid_labels), y=valid_labels)
     return torch.tensor(weights, dtype=torch.float)
 
-def train_model(model, tokenizer, train_loader, num_epochs=3, lr=2e-5, device="cuda", class_weights=None):
-    """Huấn luyện mô hình chuẩn (Single-task)"""
+def train_model(model, tokenizer, train_loader, val_loader=None, num_epochs=5, lr=3e-5, device="cuda", class_weights=None):
+    """Huấn luyện mô hình với Validation và Early Stopping"""
+    from src.utils import EarlyStopping
     model = model.to(device)
     optimizer = AdamW(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device) if class_weights is not None else None)
+    early_stopping = EarlyStopping(patience=2)
     
     for epoch in range(1, num_epochs + 1):
         model.train()
+        total_loss = 0
         progress = tqdm(train_loader, desc=f"Epoch {epoch}")
         for batch in progress:
             optimizer.zero_grad()
-            # Handle both BaseModel and DANNModel
             outputs = model(batch["input_ids"].to(device), batch["attention_mask"].to(device))
             logits = outputs[0] if isinstance(outputs, tuple) else outputs
-            
             loss = criterion(logits, batch["labels"].to(device))
             loss.backward()
             optimizer.step()
+            total_loss += loss.item()
             progress.set_postfix(loss=f"{loss.item():.4f}")
         
-        # Đánh giá nhanh sau mỗi Epoch (Lấy 500 mẫu tập train cho nhanh)
-        model.eval()
-        correct, total = 0, 0
-        with torch.no_grad():
-            for b in train_loader:
-                out = model(b["input_ids"].to(device), b["attention_mask"].to(device))
-                lgt = out[0] if isinstance(out, tuple) else out
-                preds = torch.argmax(lgt, dim=1)
-                correct += (preds == b["labels"].to(device)).sum().item()
-                total += b["labels"].size(0)
-                if total >= 500: break
-        print(f" > Epoch {epoch} - Quick Train Acc: {100 * correct / total:.2f}%")
+        avg_train_loss = total_loss / len(train_loader)
+        
+        # Validation Step
+        if val_loader:
+            model.eval()
+            val_loss = 0
+            correct, total = 0, 0
+            with torch.no_grad():
+                for b in val_loader:
+                    out = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                    lgt = out[0] if isinstance(out, tuple) else out
+                    loss = criterion(lgt, b["labels"].to(device))
+                    val_loss += loss.item()
+                    preds = torch.argmax(lgt, dim=1)
+                    correct += (preds == b["labels"].to(device)).sum().item()
+                    total += b["labels"].size(0)
+            
+            avg_val_loss = val_loss / len(val_loader)
+            val_acc = 100 * correct / total
+            print(f" > Epoch {epoch} - Val Loss: {avg_val_loss:.4f} - Val Acc: {val_acc:.2f}%")
+            
+            early_stopping(avg_val_loss)
+            if early_stopping.early_stop:
+                break
     return model
 
-def train_dann(model, tokenizer, source_loader, target_loader, num_epochs=3, lr=2e-5, device="cuda", class_weights=None):
-    """Huấn luyện DANN với Dynamic Alpha"""
+def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, num_epochs=5, lr=3e-5, device="cuda", class_weights=None):
+    """Huấn luyện DANN với Validation trên Source Sentiment"""
+    from src.utils import EarlyStopping
     model = model.to(device)
     optimizer = AdamW(model.parameters(), lr=lr)
     s_criterion = nn.CrossEntropyLoss(weight=class_weights.to(device) if class_weights is not None else None)
     d_criterion = nn.CrossEntropyLoss()
+    early_stopping = EarlyStopping(patience=2)
 
     total_steps = num_epochs * min(len(source_loader), len(target_loader))
     current_step = 0
@@ -62,48 +78,38 @@ def train_dann(model, tokenizer, source_loader, target_loader, num_epochs=3, lr=
         progress = tqdm(zip(source_loader, target_loader), total=min(len(source_loader), len(target_loader)), desc=f"DANN Epoch {epoch}")
         
         for s_batch, t_batch in progress:
-            # Tính Alpha động: tăng dần từ 0 lên 1
             p = float(current_step) / total_steps
             alpha = 2. / (1. + np.exp(-10 * p)) - 1
             current_step += 1
-
             optimizer.zero_grad()
             
-            # 1. Source Forward
-            s_input_ids = s_batch["input_ids"].to(device)
-            s_attn = s_batch["attention_mask"].to(device)
-            s_labels = s_batch["labels"].to(device)
-            s_domain = s_batch["domain_ids"].to(device)
+            # Source Forward
+            s_logits, sd_logits = model(s_batch["input_ids"].to(device), s_batch["attention_mask"].to(device), alpha=alpha)
+            loss_s_sentiment = s_criterion(s_logits, s_batch["labels"].to(device))
+            loss_s_domain = d_criterion(sd_logits, s_batch["domain_ids"].to(device))
             
-            s_logits, sd_logits = model(s_input_ids, s_attn, alpha=alpha)
-            loss_s_sentiment = s_criterion(s_logits, s_labels)
-            loss_s_domain = d_criterion(sd_logits, s_domain)
+            # Target Forward
+            _, td_logits = model(t_batch["input_ids"].to(device), t_batch["attention_mask"].to(device), alpha=alpha)
+            loss_t_domain = d_criterion(td_logits, t_batch["domain_ids"].to(device))
             
-            # 2. Target Forward
-            t_input_ids = t_batch["input_ids"].to(device)
-            t_attn = t_batch["attention_mask"].to(device)
-            t_domain = t_batch["domain_ids"].to(device)
-            
-            _, td_logits = model(t_input_ids, t_attn, alpha=alpha)
-            loss_t_domain = d_criterion(td_logits, t_domain)
-            
-            # Total Loss
             total_loss = loss_s_sentiment + loss_s_domain + loss_t_domain
-            
             total_loss.backward()
             optimizer.step()
-            progress.set_postfix(s_loss=f"{loss_s_sentiment.item():.4f}", d_loss=f"{(loss_s_domain + loss_t_domain).item():.4f}", alpha=f"{alpha:.4f}")
+            progress.set_postfix(s_loss=f"{loss_s_sentiment.item():.4f}", d_loss=f"{(loss_s_domain + loss_t_domain).item():.4f}")
         
-        # Đánh giá nhanh Sentiment sau mỗi Epoch DANN (Lấy 500 mẫu)
-        model.eval()
-        correct, total = 0, 0
-        with torch.no_grad():
-            for b in source_loader:
-                s_lgt, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
-                preds = torch.argmax(s_lgt, dim=1)
-                correct += (preds == b["labels"].to(device)).sum().item()
-                total += b["labels"].size(0)
-                if total >= 500: break
-        print(f" > DANN Epoch {epoch} - Quick Source Acc: {100 * correct / total:.2f}%")
+        # Validation Step (Source Sentiment)
+        if val_loader:
+            model.eval()
+            val_loss = 0
+            with torch.no_grad():
+                for b in val_loader:
+                    out, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                    loss = s_criterion(out, b["labels"].to(device))
+                    val_loss += loss.item()
             
+            avg_val_loss = val_loss / len(val_loader)
+            print(f" > DANN Epoch {epoch} - Source Val Loss: {avg_val_loss:.4f}")
+            early_stopping(avg_val_loss)
+            if early_stopping.early_stop:
+                break
     return model
