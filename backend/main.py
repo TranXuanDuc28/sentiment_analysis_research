@@ -9,6 +9,8 @@ from src.dataset import load_amazon_split, load_vsfc, load_tweeteval, make_datal
 from src.model import BaseModel, DANNModel
 from src.train import train_model, train_dann, compute_class_weights
 from src.evaluate import evaluate_model
+from src.visualize_embeddings import visualize_tsne
+from src.report_generator import generate_aggregate_report
 from src.utils import print_banner, save_results, print_dataset_statistics, set_seed
 
 def main():
@@ -123,6 +125,7 @@ def main():
         test_texts, test_labels, test_d_ids = load_tweeteval("test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=config["training"]["batch_size"])
         res_s4a = evaluate_model(model_base, test_loader, device, "S4a_Baseline_NoDANN")
+        save_results(res_s4a, "results/results_s4a.json")
 
         print_banner("Scenario 4b: DANN Adaptation")
         s_texts_all, s_labels_all, s_d_ids_all = load_amazon_split("english", "books", "train", max_samples=config["scenarios"]["max_samples_train"])
@@ -230,6 +233,12 @@ def main():
             print(f"1. Synergy: So với học đơn miền (S5), việc thêm đa miền giúp tiếng Việt thay đổi { (res_s7_vi['f1_macro'] - res_s5_vi['f1_macro'])*100:.2f}% F1.")
         except: pass
         print(f"2. Cross-lingual Robustness: Mô hình Universal đạt {res_s7_en['f1_macro']*100:.2f}% F1 trên miền chưa từng thấy (Apparel).")
+
+    print_banner("ALL EXPERIMENTS COMPLETED")
+    try:
+        generate_aggregate_report()
+    except Exception as e:
+        print(f"⚠️ Không thể tạo báo cáo tổng hợp: {e}")
 
 if __name__ == "__main__":
     main()
