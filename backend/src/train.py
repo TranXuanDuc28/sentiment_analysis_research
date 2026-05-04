@@ -32,6 +32,19 @@ def train_model(model, tokenizer, train_loader, num_epochs=3, lr=2e-5, device="c
             loss.backward()
             optimizer.step()
             progress.set_postfix(loss=f"{loss.item():.4f}")
+        
+        # Đánh giá nhanh sau mỗi Epoch (Lấy 500 mẫu tập train cho nhanh)
+        model.eval()
+        correct, total = 0, 0
+        with torch.no_grad():
+            for b in train_loader:
+                out = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                lgt = out[0] if isinstance(out, tuple) else out
+                preds = torch.argmax(lgt, dim=1)
+                correct += (preds == b["labels"].to(device)).sum().item()
+                total += b["labels"].size(0)
+                if total >= 500: break
+        print(f" > Epoch {epoch} - Quick Train Acc: {100 * correct / total:.2f}%")
     return model
 
 def train_dann(model, tokenizer, source_loader, target_loader, num_epochs=3, lr=2e-5, device="cuda", class_weights=None):
@@ -80,5 +93,17 @@ def train_dann(model, tokenizer, source_loader, target_loader, num_epochs=3, lr=
             total_loss.backward()
             optimizer.step()
             progress.set_postfix(s_loss=f"{loss_s_sentiment.item():.4f}", d_loss=f"{(loss_s_domain + loss_t_domain).item():.4f}", alpha=f"{alpha:.4f}")
+        
+        # Đánh giá nhanh Sentiment sau mỗi Epoch DANN (Lấy 500 mẫu)
+        model.eval()
+        correct, total = 0, 0
+        with torch.no_grad():
+            for b in source_loader:
+                s_lgt, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                preds = torch.argmax(s_lgt, dim=1)
+                correct += (preds == b["labels"].to(device)).sum().item()
+                total += b["labels"].size(0)
+                if total >= 500: break
+        print(f" > DANN Epoch {epoch} - Quick Source Acc: {100 * correct / total:.2f}%")
             
     return model
