@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 from src.dataset import load_amazon_split, load_vsfc, load_tweeteval, make_dataloader, load_multi_domain_amazon
 from src.model import BaseModel, DANNModel
 from src.train import train_model, train_dann, compute_class_weights
-from src.evaluate import evaluate_model, print_summary_table, save_research_results
+from src.evaluate import evaluate_model, print_summary_table, save_research_results, print_dataset_statistics
 from src.utils import set_seed, print_banner, save_model, load_model_weights
 
 # Setup paths
@@ -40,9 +40,11 @@ def main():
     if args.s in [0, 1]:
         print_banner("Scenario 1: Baseline Training")
         tr_texts, tr_labels, tr_d_ids = load_amazon_split("english", "books", "train", max_samples=max_tr)
+        print_dataset_statistics(tr_texts, tr_labels, "Amazon Books (Train)")
         train_loader = make_dataloader(tr_texts, tr_labels, tr_d_ids, tokenizer, batch_size=cfg["training"]["batch_size"], shuffle=True)
         model = BaseModel(model_name=cfg["model"]["name"], num_labels=cfg["model"]["num_labels"])
-        model = train_model(model, tokenizer, train_loader, num_epochs=cfg["training"]["epochs"], device=device)
+        cw = compute_class_weights(tr_labels)
+        model = train_model(model, tokenizer, train_loader, num_epochs=cfg["training"]["epochs"], device=device, class_weights=cw)
         save_model(model, path_s1)
         
         te_texts, te_labels, te_d_ids = load_amazon_split("english", "books", "test", max_samples=max_te)
@@ -62,9 +64,11 @@ def main():
     if args.s in [0, 3]:
         print_banner("Scenario 3: Multi-domain MDL Training")
         tr_texts, tr_labels, tr_d_ids = load_multi_domain_amazon(["books", "electronics", "apparel"], max_samples=max_tr)
+        print_dataset_statistics(tr_texts, tr_labels, "Multi-domain MDL (Train)")
         train_loader = make_dataloader(tr_texts, tr_labels, tr_d_ids, tokenizer, batch_size=cfg["training"]["batch_size"], shuffle=True)
         model = BaseModel(model_name=cfg["model"]["name"], num_labels=cfg["model"]["num_labels"])
-        model = train_model(model, tokenizer, train_loader, num_epochs=cfg["training"]["epochs"], device=device)
+        cw = compute_class_weights(tr_labels)
+        model = train_model(model, tokenizer, train_loader, num_epochs=cfg["training"]["epochs"], device=device, class_weights=cw)
         save_model(model, path_s3)
         
         te_texts, te_labels, te_d_ids = load_amazon_split("english", "electronics", "test", max_samples=max_te)
@@ -78,9 +82,13 @@ def main():
         source_loader = make_dataloader(tr_texts, tr_labels, tr_d_ids, tokenizer, batch_size=cfg["training"]["batch_size"]//2, shuffle=True)
         tu_texts, tu_labels, tu_d_ids = load_tweeteval("train", max_samples=max_tr, unlabeled=True)
         target_loader = make_dataloader(tu_texts, tu_labels, tu_d_ids, tokenizer, batch_size=cfg["training"]["batch_size"]//2, shuffle=True)
+        print_dataset_statistics(tr_texts, tr_labels, "DANN Source (Amazon)")
+        print_dataset_statistics(tu_texts, tu_labels, "DANN Target (Twitter - Unlabeled)")
         
         model = DANNModel(model_name=cfg["model"]["name"], num_labels=cfg["model"]["num_labels"], num_domains=cfg["model"]["num_domains"])
-        model = train_dann(model, tokenizer, source_loader, target_loader, num_epochs=cfg["training"]["epochs"], device=device)
+        cw = compute_class_weights(tr_labels)
+        # Tăng epoch cho DANN để adaptation tốt hơn
+        model = train_dann(model, tokenizer, source_loader, target_loader, num_epochs=cfg["training"]["epochs"] + 2, device=device, class_weights=cw)
         save_model(model, os.path.join(cp_dir, "model_s4.pt"))
         
         te_texts, te_labels, te_d_ids = load_tweeteval("test", max_samples=max_te)
@@ -101,6 +109,7 @@ def main():
         print_banner("Scenario 6: Multilingual Training")
         en_texts, en_labels, en_d_ids = load_multi_domain_amazon(["books", "electronics", "apparel"], max_samples=max_tr//2)
         vi_texts, vi_labels, vi_d_ids = load_vsfc("train", max_samples=max_tr//2)
+        print_dataset_statistics(en_texts + vi_texts, en_labels + vi_labels, "Multilingual (EN + VI)")
         train_loader = make_dataloader(en_texts + vi_texts, en_labels + vi_labels, en_d_ids + vi_d_ids, tokenizer, batch_size=cfg["training"]["batch_size"], shuffle=True)
         model = BaseModel(model_name=cfg["model"]["name"], num_labels=cfg["model"]["num_labels"])
         model = train_model(model, tokenizer, train_loader, num_epochs=cfg["training"]["epochs"], device=device)

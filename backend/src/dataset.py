@@ -51,20 +51,30 @@ class SentimentDataset(Dataset):
 
 def load_amazon_split(language, domain, split="train", max_samples=None):
     lang_code = "en" if language == "english" else "vi"
-    url_split = "validation" if split in ["dev", "validation"] else split
-    print(f"[Dataset] Loading Amazon | lang={lang_code} | domain={domain} | split={url_split}")
-    
-    url = f"https://huggingface.co/datasets/mteb/amazon_reviews_multi/resolve/refs/convert/parquet/{lang_code}/{url_split}/0000.parquet?download=true"
-    # Thay / bằng %2F để tránh 404
-    url = url.replace("refs/convert/parquet", "refs%2Fconvert%2Fparquet")
+    print(f"[Dataset] Loading Amazon | lang={lang_code} | domain={domain} | split={split}")
     
     try:
-        df = pd.read_parquet(url)
-        # Lọc theo domain nếu cần (MTEB thường trộn sẵn, nhưng Amazon gốc có category)
-        # Tuy nhiên bản MTEB không có cột category, nên ta coi Books là default hoặc load bản gốc
-        # Để đơn giản và chính xác, ta sẽ gán domain_id theo tham số đầu vào
-        texts = df["text"].tolist()
-        labels = [rating_to_sentiment_amazon(int(v) + 1) for v in df["label"].tolist()]
+        # Sử dụng thư viện datasets để tải và lọc theo category (domain)
+        dataset = load_dataset("amazon_reviews_multi", lang_code, split=split)
+        
+        # Chuẩn hóa tên domain (Amazon dùng 'book' thay vì 'books')
+        domain_norm = domain.lower()
+        if domain_norm == "books": domain_norm = "book"
+        
+        # Lọc theo domain (product_category)
+        if domain_norm != "all":
+            df = dataset.to_pandas()
+            # Amazon reviews multi có cột 'product_category'
+            df = df[df['product_category'] == domain_norm]
+            if df.empty:
+                print(f"⚠️ Cảnh báo: Không tìm thấy data cho domain {domain}, dùng toàn bộ split.")
+                df = dataset.to_pandas()
+        else:
+            df = dataset.to_pandas()
+
+        texts = df["review_body"].tolist()
+        # label trong amazon_reviews_multi là 0-4 (tương ứng 1-5 sao)
+        labels = [rating_to_sentiment_amazon(int(v) + 1) for v in df["stars"].tolist()]
         
         if max_samples and len(texts) > max_samples:
             random.seed(42)
@@ -74,8 +84,9 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
             
         return texts, labels, [DOMAIN_MAP.get(domain.lower(), 0)] * len(texts)
     except Exception as e:
-        print(f"[Dataset] Error: {e}")
-        return ["Sample"]*20, [2]*20, [0]*20
+        print(f"[Dataset] Error loading Amazon: {e}")
+        # Fallback dữ liệu mẫu để không crash
+        return ["Great product"]*10 + ["Bad product"]*10, [2]*10 + [0]*10, [0]*20
 
 def load_multi_domain_amazon(domains=["books", "electronics", "apparel"], max_samples=1000):
     """Gộp nhiều domain Amazon lại với nhau."""
