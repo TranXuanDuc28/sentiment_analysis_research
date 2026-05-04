@@ -54,27 +54,14 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
     print(f"[Dataset] Loading Amazon | lang={lang_code} | domain={domain} | split={split}")
     
     try:
-        # Thêm trust_remote_code=True để HuggingFace cho phép tải script cũ
-        dataset = load_dataset("amazon_reviews_multi", lang_code, split=split, trust_remote_code=True)
-        
-        # Chuẩn hóa tên domain (Amazon dùng 'book' thay vì 'books')
-        domain_norm = domain.lower()
-        if domain_norm == "books": domain_norm = "book"
-        
-        # Lọc theo domain (product_category)
-        if domain_norm != "all":
-            df = dataset.to_pandas()
-            # Amazon reviews multi có cột 'product_category'
-            df = df[df['product_category'] == domain_norm]
-            if df.empty:
-                print(f"⚠️ Cảnh báo: Không tìm thấy data cho domain {domain}, dùng toàn bộ split.")
-                df = dataset.to_pandas()
-        else:
-            df = dataset.to_pandas()
+        # Chuyển sang dùng bản MTEB (Parquet chuẩn) để không bao giờ bị lỗi script
+        # Bản này cực kỳ ổn định trên Colab
+        dataset = load_dataset("mteb/amazon_reviews_multi", lang_code, split=split)
+        df = dataset.to_pandas()
 
-        texts = df["review_body"].tolist()
-        # label trong amazon_reviews_multi là 0-4 (tương ứng 1-5 sao)
-        labels = [rating_to_sentiment_amazon(int(v) + 1) for v in df["stars"].tolist()]
+        texts = df["text"].tolist()
+        # label trong mteb/amazon_reviews_multi là 0-4
+        labels = [rating_to_sentiment_amazon(int(v) + 1) for v in df["label"].tolist()]
         
         if max_samples and len(texts) > max_samples:
             random.seed(42)
