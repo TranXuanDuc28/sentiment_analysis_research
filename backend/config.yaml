@@ -6,9 +6,9 @@ model:
   num_domains: 5
 
 training:
-  epochs: 3         # Giảm xuống 3 để tiết kiệm thời gian (vẫn đủ tốt)
+  epochs: 5         # Tăng lên 5 để đảm bảo hội tụ
   batch_size: 16
-  learning_rate: 2e-5
+  learning_rate: 3e-5
   max_length: 128
   dann_alpha: 1.0
 

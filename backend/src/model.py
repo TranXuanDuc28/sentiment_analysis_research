@@ -21,8 +21,9 @@ class BaseModel(nn.Module):
         self.encoder = AutoModel.from_pretrained(model_name)
         self.sentiment_head = nn.Sequential(
             nn.Linear(self.encoder.config.hidden_size, 256),
+            nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout(0.2),
             nn.Linear(256, num_labels)
         )
 
@@ -41,16 +42,18 @@ class DANNModel(nn.Module):
         # Sentiment Head
         self.sentiment_head = nn.Sequential(
             nn.Linear(self.encoder.config.hidden_size, 256),
+            nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout(0.2),
             nn.Linear(256, num_labels)
         )
         
         # Domain Head
         self.domain_head = nn.Sequential(
             nn.Linear(self.encoder.config.hidden_size, 256),
+            nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout(0.2),
             nn.Linear(256, num_domains)
         )
 
