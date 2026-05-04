@@ -82,15 +82,15 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
         
         pbar = tqdm(source_loader, desc=f"DANN Epoch {epoch}")
         for s_batch in pbar:
-            # 1. Prepare Lambda (p increases from 0 to 1)
+            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 0.1
             p = float(current_step) / total_steps
-            lambd = 2. / (1. + np.exp(-10 * p)) - 1
+            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 0.1
             
             # 2. Source batch
             s_input_ids = s_batch["input_ids"].to(device)
             s_attention_mask = s_batch["attention_mask"].to(device)
             s_labels = s_batch["labels"].to(device)
-            s_domain_labels = torch.zeros(s_input_ids.size(0), 1).to(device) # Source = 0
+            s_domain_labels = torch.zeros(s_input_ids.size(0), 1, dtype=torch.float).to(device) # Source = 0
             
             # 3. Target batch (unlabeled)
             try:
@@ -101,7 +101,7 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             
             t_input_ids = t_batch["input_ids"].to(device)
             t_attention_mask = t_batch["attention_mask"].to(device)
-            t_domain_labels = torch.ones(t_input_ids.size(0), 1).to(device) # Target = 1
+            t_domain_labels = torch.ones(t_input_ids.size(0), 1, dtype=torch.float).to(device) # Target = 1
             
             optimizer.zero_grad()
             
@@ -117,6 +117,10 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             # Total Loss
             total_loss = loss_s_class + (loss_s_domain + loss_t_domain)
             total_loss.backward()
+            
+            # Gradient Clipping to stabilize Adversarial Training
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
             optimizer.step()
             
             epoch_s_loss += loss_s_class.item()
