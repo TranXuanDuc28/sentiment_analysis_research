@@ -35,7 +35,7 @@ class BaseModel(nn.Module):
 
 class DANNModel(nn.Module):
     """Mô hình Domain Adversarial Neural Network"""
-    def __init__(self, model_name="xlm-roberta-base", num_labels=3, num_domains=5):
+    def __init__(self, model_name="xlm-roberta-base", num_labels=3):
         super(DANNModel, self).__init__()
         self.encoder = AutoModel.from_pretrained(model_name)
         
@@ -48,13 +48,13 @@ class DANNModel(nn.Module):
             nn.Linear(256, num_labels)
         )
         
-        # Domain Head
+        # Domain Head (Binary: Source vs Target)
         self.domain_head = nn.Sequential(
             nn.Linear(self.encoder.config.hidden_size, 256),
             nn.LayerNorm(256),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(256, num_domains)
+            nn.Linear(256, 1)
         )
 
     def forward(self, input_ids, attention_mask, alpha=None):

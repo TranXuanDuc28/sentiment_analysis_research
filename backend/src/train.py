@@ -61,51 +61,76 @@ def train_model(model, tokenizer, train_loader, val_loader=None, num_epochs=5, l
                 break
     return model
 
-def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, num_epochs=5, lr=3e-5, device="cuda", class_weights=None):
-    """Huấn luyện DANN với Validation trên Source Sentiment"""
+def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, num_epochs=3, lr=2e-5, device="cpu", class_weights=None):
     from src.utils import EarlyStopping
-    model = model.to(device)
-    optimizer = AdamW(model.parameters(), lr=lr)
+    model.to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     s_criterion = nn.CrossEntropyLoss(weight=class_weights.to(device) if class_weights is not None else None)
-    d_criterion = nn.CrossEntropyLoss()
+    d_criterion = nn.BCEWithLogitsLoss()
     early_stopping = EarlyStopping(patience=2)
-
-    total_steps = num_epochs * min(len(source_loader), len(target_loader))
+    
+    total_steps = num_epochs * len(source_loader)
     current_step = 0
-
+    
     for epoch in range(1, num_epochs + 1):
         model.train()
-        progress = tqdm(zip(source_loader, target_loader), total=min(len(source_loader), len(target_loader)), desc=f"DANN Epoch {epoch}")
+        # DANN requires alternating or joint training. Here we use joint with dynamic lambda.
+        target_iter = iter(target_loader)
         
-        for s_batch, t_batch in progress:
+        epoch_s_loss = 0
+        epoch_d_loss = 0
+        
+        pbar = tqdm(source_loader, desc=f"DANN Epoch {epoch}")
+        for s_batch in pbar:
+            # 1. Prepare Lambda (p increases from 0 to 1)
             p = float(current_step) / total_steps
-            alpha = 2. / (1. + np.exp(-10 * p)) - 1
-            current_step += 1
+            lambd = 2. / (1. + np.exp(-10 * p)) - 1
+            
+            # 2. Source batch
+            s_input_ids = s_batch["input_ids"].to(device)
+            s_attention_mask = s_batch["attention_mask"].to(device)
+            s_labels = s_batch["labels"].to(device)
+            s_domain_labels = torch.zeros(s_input_ids.size(0), 1).to(device) # Source = 0
+            
+            # 3. Target batch (unlabeled)
+            try:
+                t_batch = next(target_iter)
+            except StopIteration:
+                target_iter = iter(target_loader)
+                t_batch = next(target_iter)
+            
+            t_input_ids = t_batch["input_ids"].to(device)
+            t_attention_mask = t_batch["attention_mask"].to(device)
+            t_domain_labels = torch.ones(t_input_ids.size(0), 1).to(device) # Target = 1
+            
             optimizer.zero_grad()
             
-            # Source Forward
-            s_logits, sd_logits = model(s_batch["input_ids"].to(device), s_batch["attention_mask"].to(device), alpha=alpha)
-            loss_s_sentiment = s_criterion(s_logits, s_batch["labels"].to(device))
-            loss_s_domain = d_criterion(sd_logits, s_batch["domain_ids"].to(device))
+            # Forward Source
+            s_class_out, s_domain_out = model(s_input_ids, s_attention_mask, alpha=lambd)
+            loss_s_class = s_criterion(s_class_out, s_labels)
+            loss_s_domain = d_criterion(s_domain_out, s_domain_labels)
             
-            # Target Forward
-            _, td_logits = model(t_batch["input_ids"].to(device), t_batch["attention_mask"].to(device), alpha=alpha)
-            loss_t_domain = d_criterion(td_logits, t_batch["domain_ids"].to(device))
+            # Forward Target
+            _, t_domain_out = model(t_input_ids, t_attention_mask, alpha=lambd)
+            loss_t_domain = d_criterion(t_domain_out, t_domain_labels)
             
-            total_loss = loss_s_sentiment + loss_s_domain + loss_t_domain
+            # Total Loss
+            total_loss = loss_s_class + (loss_s_domain + loss_t_domain)
             total_loss.backward()
             optimizer.step()
-            progress.set_postfix(s_loss=f"{loss_s_sentiment.item():.4f}", d_loss=f"{(loss_s_domain + loss_t_domain).item():.4f}")
-        
-        # Validation Step (Source Sentiment)
+            
+            epoch_s_loss += loss_s_class.item()
+            epoch_d_loss += (loss_s_domain.item() + loss_t_domain.item())
+            current_step += 1
+            pbar.set_postfix(d_loss=f"{epoch_d_loss:.4f}", s_loss=f"{epoch_s_loss:.4f}", alpha=f"{lambd:.2f}")
+
         if val_loader:
             model.eval()
             val_loss = 0
             with torch.no_grad():
                 for b in val_loader:
                     out, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
-                    loss = s_criterion(out, b["labels"].to(device))
-                    val_loss += loss.item()
+                    val_loss += s_criterion(out, b["labels"].to(device)).item()
             
             avg_val_loss = val_loss / len(val_loader)
             print(f" > DANN Epoch {epoch} - Source Val Loss: {avg_val_loss:.4f}")
