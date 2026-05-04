@@ -63,9 +63,13 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
             dataset = load_dataset("mteb/amazon_reviews_multi", lang_code, split=split)
             df = dataset.to_pandas()
 
-        texts = df["text"].tolist()
-        # label trong mteb/amazon_reviews_multi là 0-4
-        labels = [rating_to_sentiment_amazon(int(v) + 1) for v in df["label"].tolist()]
+        # Tự động chọn tên cột (Hỗ trợ cả bản MTEB và bản Amazon gốc)
+        text_col = "text" if "text" in df.columns else "review_body"
+        label_col = "label" if "label" in df.columns else "stars"
+        
+        texts = df[text_col].tolist()
+        # Nếu là 'label' (0-4) thì +1, nếu là 'stars' (1-5) thì giữ nguyên để đưa vào hàm rating_to_sentiment_amazon
+        labels = [rating_to_sentiment_amazon(int(v) + (1 if label_col == "label" else 0)) for v in df[label_col].tolist()]
         
         if max_samples and len(texts) > max_samples:
             # Seed khác nhau cho domain khác cho đa dạng

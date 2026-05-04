@@ -7,51 +7,54 @@ def download():
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
         
-    # Mapping các URL trực tiếp (Bỏ qua load_dataset script)
-    datasets = {
-        "Amazon EN": {
-            "base": "https://huggingface.co/datasets/mteb/amazon_reviews_multi/resolve/main/en",
-            "files": ["train", "test", "validation"],
-            "type": "parquet",
-            "out_prefix": "amazon_en"
+    # URL cấu trúc chuẩn của HuggingFace cho bản đã convert sang Parquet
+    # Mẫu: .../resolve/refs%2Fconvert%2Fparquet/[CONFIG]/[SPLIT]/0000.parquet
+    datasets = [
+        {
+            "name": "Amazon EN",
+            "url_pattern": "https://huggingface.co/datasets/amazon_reviews_multi/resolve/refs%2Fconvert%2Fparquet/en/{split}/0000.parquet",
+            "splits": ["train", "test", "validation"],
+            "out_prefix": "amazon_en",
+            "type": "parquet"
         },
-        "VSFC": {
-            "base": "https://huggingface.co/datasets/uitnlp/vietnamese_students_feedback/resolve/main/data",
-            "files": ["train", "test", "validation"],
-            "type": "csv",
-            "out_prefix": "vsfc"
+        {
+            "name": "VSFC",
+            "url_pattern": "https://huggingface.co/datasets/uitnlp/vietnamese_students_feedback/resolve/refs%2Fconvert%2Fparquet/default/{split}/0000.parquet",
+            "splits": ["train", "test", "validation"],
+            "out_prefix": "vsfc",
+            "type": "parquet"
         },
-        "TweetEval": {
-            "base": "https://huggingface.co/datasets/cardiffnlp/tweet_eval/resolve/main/sentiment",
-            "files": ["train", "test", "validation"],
-            "type": "parquet",
-            "out_prefix": "twitter"
+        {
+            "name": "TweetEval",
+            "url_pattern": "https://huggingface.co/datasets/cardiffnlp/tweet_eval/resolve/main/sentiment/{split}.parquet",
+            "splits": ["train", "test", "validation"],
+            "out_prefix": "twitter",
+            "type": "parquet"
         }
-    }
+    ]
 
-    for name, info in datasets.items():
-        print(f"\n🚀 Đang tải {name}...")
-        for f in info["files"]:
+    for ds in datasets:
+        print(f"\n🚀 Đang tải {ds['name']}...")
+        for split in ds["splits"]:
             try:
-                if info["type"] == "parquet":
-                    # Thử các pattern phổ biến của HF
-                    url = f"{info['base']}/{f}.parquet"
-                    try:
-                        df = pd.read_parquet(url)
-                    except:
-                        url = f"{info['base']}/{f}-00000-of-00001.parquet"
-                        df = pd.read_parquet(url)
+                url = ds["url_pattern"].format(split=split)
+                if ds["type"] == "parquet":
+                    df = pd.read_parquet(url)
                 else:
-                    url = f"{info['base']}/{f}.csv"
                     df = pd.read_csv(url)
                 
-                out_path = f"{data_dir}/{info['out_prefix']}_{f}.csv"
+                # Chuẩn hóa tên cột cho VSFC nếu cần
+                if ds["name"] == "VSFC":
+                    if "sentence" in df.columns:
+                        df = df.rename(columns={"sentence": "sentence", "sentiment": "sentiment"})
+                
+                out_path = f"{data_dir}/{ds['out_prefix']}_{split}.csv"
                 df.to_csv(out_path, index=False)
-                print(f"✅ Đã lưu {out_path}")
+                print(f"✅ Đã lưu {out_path} ({len(df)} samples)")
             except Exception as e:
-                print(f"❌ Lỗi khi tải {f}: {e}")
+                print(f"❌ Lỗi khi tải {split}: {e}")
 
-    print("\n✨ HOÀN THÀNH! Dữ liệu đã sẵn sàng trong thư mục 'data/'.")
+    print("\n✨ HOÀN THÀNH! Toàn bộ dữ liệu đã nằm trong thư mục 'data/'.")
 
 if __name__ == "__main__":
     download()
