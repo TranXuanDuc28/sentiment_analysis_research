@@ -137,6 +137,7 @@ def main():
         model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=int(config["training"]["epochs"]), lr=float(config["training"]["learning_rate"]), device=device, class_weights=weights)
         res_s4b = evaluate_model(model_dann, test_loader, device, "S4b_DANN_Twitter")
         print(f"\n🚀 INSIGHT: DANN giúp cải thiện { (res_s4b['f1_macro'] - res_s4a['f1_macro'])*100:.2f}% F1-Macro trên Twitter.")
+        global_results["S4b"] = res_s4b
 
     # 5. SCENARIO 5: Multilingual Joint Learning (EN + VI)
     if args.s in [0, 5]:
@@ -161,6 +162,34 @@ def main():
         if "S1b" in global_results:
             gain = res_s5_vi["f1_macro"] - global_results["S1b"]["f1_macro"]
             print(f"\n🚀 INSIGHT: Học đa ngữ giúp tiếng Việt thay đổi {gain*100:.2f}% F1-Macro so với học đơn ngữ.")
+
+    # 6. SCENARIO 6: Hybrid Learning (Bonus)
+    if args.s in [0, 6]:
+        print_banner("Scenario 6: Hybrid Learning (Multi-source -> Adapt to Twitter)")
+        tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+        # Mix Books + Electronics as Source
+        t1, l1, d1 = load_amazon_split("english", "books", "train", max_samples=config["scenarios"]["max_samples_train"]//2)
+        t2, l2, d2 = load_amazon_split("english", "electronics", "train", max_samples=config["scenarios"]["max_samples_train"]//2)
+        s_all_t, s_all_l, s_all_d = t1 + t2, l1 + l2, d1 + d2
+        
+        t_texts, t_labels, t_d_ids = load_tweeteval("train", max_samples=config["scenarios"]["max_samples_train"], unlabeled=True)
+        
+        s_train, s_val, l_train, l_val, d_train, d_val = train_test_split(s_all_t, s_all_l, s_all_d, test_size=0.1, random_state=42)
+        s_loader = make_dataloader(s_train, l_train, d_train, tokenizer, batch_size=config["training"]["batch_size"], shuffle=True)
+        val_loader = make_dataloader(s_val, l_val, d_val, tokenizer, batch_size=config["training"]["batch_size"])
+        target_loader = make_dataloader(t_texts, t_labels, t_d_ids, tokenizer, batch_size=config["training"]["batch_size"], shuffle=True)
+        
+        model_hybrid = DANNModel(config["model"]["name"])
+        weights = compute_class_weights(l_train)
+        model_hybrid = train_dann(model_hybrid, tokenizer, s_loader, target_loader, val_loader=val_loader, num_epochs=int(config["training"]["epochs"]), lr=float(config["training"]["learning_rate"]), device=device, class_weights=weights)
+        
+        test_texts, test_labels, test_d_ids = load_tweeteval("test", max_samples=MAX_TEST)
+        test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=config["training"]["batch_size"])
+        res_s6 = evaluate_model(model_hybrid, test_loader, device, "S6_Hybrid_Adaptation")
+        
+        if "S4b" in global_results:
+            improvement = res_s6["f1_macro"] - global_results["S4b"]["f1_macro"]
+            print(f"\n🚀 INSIGHT: Việc học đa nguồn (Hybrid) giúp Adaptation hiệu quả hơn {improvement*100:.2f}% so với học đơn nguồn (S4b).")
 
 if __name__ == "__main__":
     main()
