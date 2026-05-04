@@ -44,8 +44,36 @@ def evaluate_model(model, dataloader, device="cuda", scenario_name="Unknown"):
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
-    report = classification_report(all_labels, all_preds, output_dict=True, zero_division=0)
+    # Tính toán chi tiết
+    unique_labels = np.unique(all_labels)
+    target_names = [str(i) for i in unique_labels]
+    report = classification_report(all_labels, all_preds, target_names=target_names, output_dict=True)
+    print(classification_report(all_labels, all_preds))
     
+    # Macro F1 cực kỳ quan trọng cho dữ liệu không cân bằng (như VSFC)
+    macro_f1 = report['macro avg']['f1-score']
+    print(f"📊 Macro F1-score: {macro_f1:.4f}")
+    
+    # Vẽ Confusion Matrix (Lưu vào thư mục results/plots)
+    try:
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        
+        cm = confusion_matrix(all_labels, all_preds)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=target_names, yticklabels=target_names)
+        plt.xlabel('Predicted')
+        plt.ylabel('Actual')
+        plt.title(f'Confusion Matrix - {scenario_name}')
+        
+        os.makedirs("results/plots", exist_ok=True)
+        plot_path = f"results/plots/cm_{scenario_name.lower().replace(' ', '_')}.png"
+        plt.savefig(plot_path)
+        plt.close()
+        print(f"📈 Đã lưu Confusion Matrix tại: {plot_path}")
+    except Exception as e:
+        print(f"⚠️ Không thể vẽ Confusion Matrix: {e}")
+
     metrics = {
         "accuracy": accuracy_score(all_labels, all_preds),
         "f1_macro": f1_score(all_labels, all_preds, average="macro"),
@@ -54,7 +82,6 @@ def evaluate_model(model, dataloader, device="cuda", scenario_name="Unknown"):
     }
 
     print(f"\n[Results: {scenario_name}]")
-    print(classification_report(all_labels, all_preds, zero_division=0))
     
     return metrics
 

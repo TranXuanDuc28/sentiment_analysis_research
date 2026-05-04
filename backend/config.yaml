@@ -2,6 +2,7 @@
 
 model:
   name: "xlm-roberta-base"
+  vi_baseline: "vinai/phobert-base"
   num_labels: 3
   num_domains: 5
 
