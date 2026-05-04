@@ -34,7 +34,7 @@ def main():
         model = BaseModel(config["model"]["name"])
         weights = compute_class_weights(train_labels)
         
-        model = train_model(model, tokenizer, train_loader, num_epochs=config["training"]["epochs"], lr=config["training"]["learning_rate"], device=device, class_weights=weights)
+        model = train_model(model, tokenizer, train_loader, num_epochs=int(config["training"]["epochs"]), lr=float(config["training"]["learning_rate"]), device=device, class_weights=weights)
         torch.save(model.state_dict(), "checkpoints/model_en_books.pt")
         
         test_texts, test_labels, test_d_ids = load_amazon_split("english", "books", "test", max_samples=config["scenarios"]["max_samples_test"])
@@ -121,7 +121,7 @@ def main():
         
         model = DANNModel(config["model"]["name"])
         weights = compute_class_weights(s_labels)
-        model = train_dann(model, tokenizer, s_loader, t_loader, num_epochs=config["training"]["epochs"], device=device, class_weights=weights)
+        model = train_dann(model, tokenizer, s_loader, t_loader, num_epochs=int(config["training"]["epochs"]), lr=float(config["training"]["learning_rate"]), device=device, class_weights=weights)
         
         # Test on Twitter
         test_texts, test_labels, test_d_ids = load_tweeteval("test", max_samples=config["scenarios"]["max_samples_test"])
