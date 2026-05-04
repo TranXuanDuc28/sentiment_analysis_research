@@ -67,7 +67,7 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     s_criterion = nn.CrossEntropyLoss(weight=class_weights.to(device) if class_weights is not None else None)
     d_criterion = nn.BCEWithLogitsLoss()
-    early_stopping = EarlyStopping(patience=2)
+    early_stopping = EarlyStopping(patience=3)
     
     total_steps = num_epochs * len(source_loader)
     current_step = 0
@@ -82,9 +82,9 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
         
         pbar = tqdm(source_loader, desc=f"DANN Epoch {epoch}")
         for s_batch in pbar:
-            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 0.1
+            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 1.0
             p = float(current_step) / total_steps
-            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 0.1
+            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 1.0
             
             # 2. Source batch
             s_input_ids = s_batch["input_ids"].to(device)

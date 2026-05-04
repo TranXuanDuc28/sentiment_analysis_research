@@ -19,7 +19,8 @@ DOMAIN_MAP = {
     "electronics": 1,
     "apparel": 2,
     "vsfc": 3,
-    "twitter": 4
+    "yelp": 4,
+    "imdb": 5
 }
 
 def rating_to_sentiment_amazon(rating: int) -> int:
@@ -167,34 +168,51 @@ def load_vsfc(split="test", max_samples=None):
     except:
         return ["Câu mẫu"], [2], [3]
 
-def load_tweeteval(split="test", max_samples=None, unlabeled=False):
-    csv_path = f"data/twitter_{split}.csv"
-    pq_path = f"data/twitter_{split}.parquet"
-    print(f"[Dataset] Loading Twitter | split={split} | unlabeled={unlabeled}")
+def load_yelp(split="test", max_samples=None, unlabeled=False):
+    csv_path = f"data/yelp_{split}.csv"
+    print(f"[Dataset] Loading Yelp | split={split} | unlabeled={unlabeled}")
     try:
-        if os.path.exists(pq_path):
-            df = pd.read_parquet(pq_path)
-        elif os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-        else:
-            ds = load_dataset("cardiffnlp/tweet_eval", "sentiment", split=split)
-            df = ds.to_pandas()
-            
+        df = pd.read_csv(csv_path)
         texts = df["text"].tolist()
         
         if unlabeled:
             labels = [-1] * len(texts)
         else:
-            labels = [int(v) for v in df["label"].tolist()]
+            # Map binary (0,1) to ternary (0,2) to match Amazon
+            labels = [2 if int(v) == 1 else 0 for v in df["label"].tolist()]
         
         if max_samples and len(texts) > max_samples:
             random.seed(42)
             indices = random.sample(range(len(texts)), max_samples)
             texts = [texts[i] for i in indices]
             labels = [labels[i] for i in indices]
-        return texts, labels, [DOMAIN_MAP["twitter"]] * len(texts)
-    except:
-        return ["Tweet"], [-1 if unlabeled else 1], [4]
+        return texts, labels, [DOMAIN_MAP["yelp"]] * len(texts)
+    except Exception as e:
+        print(f"Error loading Yelp: {e}")
+        return ["Yelp review"], [-1 if unlabeled else 2], [4]
+
+def load_imdb(split="test", max_samples=None, unlabeled=False):
+    csv_path = f"data/imdb_{split}.csv"
+    print(f"[Dataset] Loading IMDB | split={split} | unlabeled={unlabeled}")
+    try:
+        df = pd.read_csv(csv_path)
+        texts = df["text"].tolist()
+        
+        if unlabeled:
+            labels = [-1] * len(texts)
+        else:
+            # Map binary (0,1) to ternary (0,2) to match Amazon
+            labels = [2 if int(v) == 1 else 0 for v in df["label"].tolist()]
+        
+        if max_samples and len(texts) > max_samples:
+            random.seed(42)
+            indices = random.sample(range(len(texts)), max_samples)
+            texts = [texts[i] for i in indices]
+            labels = [labels[i] for i in indices]
+        return texts, labels, [DOMAIN_MAP["imdb"]] * len(texts)
+    except Exception as e:
+        print(f"Error loading IMDB: {e}")
+        return ["IMDB review"], [-1 if unlabeled else 2], [5]
 
 def make_dataloader(texts, labels, domain_ids, tokenizer, batch_size=32, max_length=128, shuffle=False):
     dataset = SentimentDataset(texts, labels, domain_ids, tokenizer, max_length)

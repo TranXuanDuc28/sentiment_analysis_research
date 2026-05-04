@@ -37,7 +37,7 @@ def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
     # 1. BIỂU ĐỒ TỔNG QUÁT: F1-Macro Across Scenarios
     plt.figure(figsize=(12, 6))
     sns.set_style("whitegrid")
-    ax = sns.barplot(x="Scenario", y="F1-Macro", data=df, palette="viridis")
+    ax = sns.barplot(x="Scenario", y="F1-Macro", data=df, palette="viridis", hue=None)
     for p in ax.patches:
         ax.annotate(f'{p.get_height():.3f}', (p.get_x() + p.get_width() / 2., p.get_height()),
                     ha='center', va='center', fontsize=11, color='black', xytext=(0, 5),
@@ -53,7 +53,7 @@ def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
     if "S4A" in results and "S4" in results:
         comp_df = df[df["Scenario"].isin(["S4A", "S4"])]
         plt.figure(figsize=(8, 6))
-        sns.barplot(x="Scenario", y="F1-Macro", data=comp_df, palette="Set2")
+        sns.barplot(x="Scenario", y="F1-Macro", data=comp_df, palette="Set2", hue=None)
         plt.title("Domain Adaptation Effect: Baseline vs DANN")
         plt.savefig(os.path.join(plots_dir, "adaptation_effect.png"))
         plt.close()

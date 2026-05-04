@@ -1,6 +1,11 @@
 
 import os
 import pandas as pd
+import sys
+
+# Configure stdout to use utf-8 to prevent UnicodeEncodeError with emojis on Windows
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
 
 def download():
     data_dir = "data"
@@ -25,10 +30,17 @@ def download():
             "type": "parquet"
         },
         {
-            "name": "TweetEval",
-            "url_pattern": "https://huggingface.co/datasets/cardiffnlp/tweet_eval/resolve/main/sentiment/{split}.parquet",
-            "splits": ["train", "test", "validation"],
-            "out_prefix": "twitter",
+            "name": "Yelp",
+            "url_pattern": "https://huggingface.co/datasets/yelp_polarity/resolve/refs%2Fconvert%2Fparquet/plain_text/{split}/0000.parquet",
+            "splits": ["train", "test"],
+            "out_prefix": "yelp",
+            "type": "parquet"
+        },
+        {
+            "name": "IMDB",
+            "url_pattern": "https://huggingface.co/datasets/imdb/resolve/refs%2Fconvert%2Fparquet/plain_text/{split}/0000.parquet",
+            "splits": ["train", "test"],
+            "out_prefix": "imdb",
             "type": "parquet"
         }
     ]
@@ -48,6 +60,10 @@ def download():
                     if "sentence" in df.columns:
                         df = df.rename(columns={"sentence": "sentence", "sentiment": "sentiment"})
                 
+                # Giới hạn mẫu cho Yelp và IMDB (match SentXFormer paper)
+                if ds["name"] in ["Yelp", "IMDB"] and len(df) > 8000:
+                    df = df.sample(n=8000, random_state=42)
+                    
                 out_path = f"{data_dir}/{ds['out_prefix']}_{split}.csv"
                 df.to_csv(out_path, index=False)
                 print(f"✅ Đã lưu {out_path} ({len(df)} samples)")

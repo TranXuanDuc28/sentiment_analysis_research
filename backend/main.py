@@ -2,10 +2,15 @@
 import argparse
 import yaml
 import os
+import sys
 import torch
+
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
+
 from transformers import AutoTokenizer
 from sklearn.model_selection import train_test_split
-from src.dataset import load_amazon_split, load_vsfc, load_tweeteval, make_dataloader, word_segment_vietnamese
+from src.dataset import load_amazon_split, load_vsfc, load_yelp, load_imdb, make_dataloader, word_segment_vietnamese
 from src.model import BaseModel, DANNModel
 from src.train import train_model, train_dann, compute_class_weights
 from src.evaluate import evaluate_model
@@ -18,7 +23,7 @@ def main():
     parser.add_argument("--s", type=int, default=0, help="Scenario to run (0=all, 1-5)")
     args = parser.parse_args()
 
-    with open("config.yaml", "r") as f:
+    with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     set_seed(42)
@@ -122,14 +127,14 @@ def main():
         if os.path.exists("checkpoints/model_en_books.pt"):
             model_base.load_state_dict(torch.load("checkpoints/model_en_books.pt", map_location=device))
         
-        test_texts, test_labels, test_d_ids = load_tweeteval("test", max_samples=MAX_TEST)
+        test_texts, test_labels, test_d_ids = load_yelp("test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=config["training"]["batch_size"])
-        res_s4a = evaluate_model(model_base, test_loader, device, "S4a_Baseline_NoDANN")
+        res_s4a = evaluate_model(model_base, test_loader, device, "S4a_Baseline_Yelp")
         save_results(res_s4a, "results/results_s4a.json")
 
         print_banner("Scenario 4b: DANN Adaptation")
         s_texts_all, s_labels_all, s_d_ids_all = load_amazon_split("english", "books", "train", max_samples=config["scenarios"]["max_samples_train"])
-        t_texts, t_labels, t_d_ids = load_tweeteval("train", max_samples=config["scenarios"]["max_samples_train"], unlabeled=True)
+        t_texts, t_labels, t_d_ids = load_yelp("train", max_samples=config["scenarios"]["max_samples_train"], unlabeled=True)
         s_train, s_val, l_train, l_val, d_train, d_val = train_test_split(s_texts_all, s_labels_all, s_d_ids_all, test_size=0.1, random_state=42)
         s_loader = make_dataloader(s_train, l_train, d_train, tokenizer, batch_size=config["training"]["batch_size"], shuffle=True)
         val_loader = make_dataloader(s_val, l_val, d_val, tokenizer, batch_size=config["training"]["batch_size"])
@@ -138,8 +143,9 @@ def main():
         model_dann = DANNModel(config["model"]["name"])
         weights = compute_class_weights(l_train)
         model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=int(config["training"]["epochs"]), lr=float(config["training"]["learning_rate"]), device=device, class_weights=weights)
-        res_s4b = evaluate_model(model_dann, test_loader, device, "S4b_DANN_Twitter")
-        print(f"\n🚀 INSIGHT: DANN giúp cải thiện { (res_s4b['f1_macro'] - res_s4a['f1_macro'])*100:.2f}% F1-Macro trên Twitter.")
+        res_s4b = evaluate_model(model_dann, test_loader, device, "S4b_DANN_Yelp")
+        diff = (res_s4b['f1_macro'] - res_s4a['f1_macro']) * 100
+        print(f"\n🚀 INSIGHT: DANN thay đổi {diff:.2f}% F1-Macro trên Yelp.")
         global_results["S4b"] = res_s4b
 
     # 5. SCENARIO 5: Multilingual Joint Learning (EN + VI)
@@ -168,14 +174,14 @@ def main():
 
     # 6. SCENARIO 6: Hybrid Learning (Bonus)
     if args.s in [0, 6]:
-        print_banner("Scenario 6: Hybrid Learning (Multi-source -> Adapt to Twitter)")
+        print_banner("Scenario 6: Hybrid Learning (Amazon+Yelp -> Adapt to IMDB)")
         tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
-        # Mix Books + Electronics as Source
+        # Mix Amazon + Yelp as Source
         t1, l1, d1 = load_amazon_split("english", "books", "train", max_samples=config["scenarios"]["max_samples_train"]//2)
-        t2, l2, d2 = load_amazon_split("english", "electronics", "train", max_samples=config["scenarios"]["max_samples_train"]//2)
+        t2, l2, d2 = load_yelp("train", max_samples=config["scenarios"]["max_samples_train"]//2)
         s_all_t, s_all_l, s_all_d = t1 + t2, l1 + l2, d1 + d2
         
-        t_texts, t_labels, t_d_ids = load_tweeteval("train", max_samples=config["scenarios"]["max_samples_train"], unlabeled=True)
+        t_texts, t_labels, t_d_ids = load_imdb("train", max_samples=config["scenarios"]["max_samples_train"], unlabeled=True)
         
         s_train, s_val, l_train, l_val, d_train, d_val = train_test_split(s_all_t, s_all_l, s_all_d, test_size=0.1, random_state=42)
         s_loader = make_dataloader(s_train, l_train, d_train, tokenizer, batch_size=config["training"]["batch_size"], shuffle=True)
@@ -186,9 +192,9 @@ def main():
         weights = compute_class_weights(l_train)
         model_hybrid = train_dann(model_hybrid, tokenizer, s_loader, target_loader, val_loader=val_loader, num_epochs=int(config["training"]["epochs"]), lr=float(config["training"]["learning_rate"]), device=device, class_weights=weights)
         
-        test_texts, test_labels, test_d_ids = load_tweeteval("test", max_samples=MAX_TEST)
+        test_texts, test_labels, test_d_ids = load_imdb("test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=config["training"]["batch_size"])
-        res_s6 = evaluate_model(model_hybrid, test_loader, device, "S6_Hybrid_Adaptation")
+        res_s6 = evaluate_model(model_hybrid, test_loader, device, "S6_Hybrid_IMDB")
         
         if "S4b" in global_results:
             improvement = res_s6["f1_macro"] - global_results["S4b"]["f1_macro"]

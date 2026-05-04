@@ -7,7 +7,7 @@ model:
   num_domains: 5
 
 training:
-  epochs: 5         # Tăng lên 5 để đảm bảo hội tụ
+  epochs: 10         # Tăng lên 10 cho DANN để hội tụ tốt hơn
   batch_size: 16
   learning_rate: 3e-5
   max_length: 128
