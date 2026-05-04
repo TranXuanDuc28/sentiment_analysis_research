@@ -51,31 +51,36 @@ class SentimentDataset(Dataset):
 
 def load_amazon_split(language, domain, split="train", max_samples=None):
     lang_code = "en" if language == "english" else "vi"
-    print(f"[Dataset] Loading Amazon | lang={lang_code} | domain={domain} | split={split}")
+    file_path = f"data/amazon_{lang_code}_{split}.csv"
+    
+    print(f"[Dataset] Loading Amazon | file={file_path} | domain={domain}")
     
     try:
-        # Chuyển sang dùng bản MTEB (Parquet chuẩn) để không bao giờ bị lỗi script
-        # Bản này cực kỳ ổn định trên Colab
-        dataset = load_dataset("mteb/amazon_reviews_multi", lang_code, split=split)
-        df = dataset.to_pandas()
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+        else:
+            print(f"⚠️ Không thấy file cục bộ, đang tải online...")
+            dataset = load_dataset("mteb/amazon_reviews_multi", lang_code, split=split)
+            df = dataset.to_pandas()
 
         texts = df["text"].tolist()
         # label trong mteb/amazon_reviews_multi là 0-4
         labels = [rating_to_sentiment_amazon(int(v) + 1) for v in df["label"].tolist()]
         
         if max_samples and len(texts) > max_samples:
-            random.seed(42)
+            # Seed khác nhau cho domain khác cho đa dạng
+            d_seed = 42 + DOMAIN_MAP.get(domain.lower(), 0)
+            random.seed(d_seed)
             indices = random.sample(range(len(texts)), max_samples)
             texts = [texts[i] for i in indices]
             labels = [labels[i] for i in indices]
             
         return texts, labels, [DOMAIN_MAP.get(domain.lower(), 0)] * len(texts)
     except Exception as e:
-        print(f"[Dataset] Error loading Amazon: {e}")
-        # Fallback có đủ 3 nhãn (0, 1, 2) để tránh lỗi CrossEntropyLoss weights
-        texts = ["Sản phẩm tệ"]*10 + ["Bình thường"]*10 + ["Rất tốt"]*10
-        labels = [0]*10 + [1]*10 + [2]*10
-        return texts, labels, [0]*30
+        print(f"[Dataset] Error: {e}")
+        # Fallback 3 nhãn
+        texts = ["Tệ"]*10 + ["Ổn"]*10 + ["Tốt"]*10
+        return texts, [0]*10 + [1]*10 + [2]*10, [0]*30
 
 def load_multi_domain_amazon(domains=["books", "electronics", "apparel"], max_samples=1000):
     """Gộp nhiều domain Amazon lại với nhau."""
@@ -91,10 +96,14 @@ def load_multi_domain_amazon(domains=["books", "electronics", "apparel"], max_sa
     return all_texts, all_labels, all_d_ids
 
 def load_vsfc(split="test", max_samples=None):
-    url_split = "validation" if split in ["dev", "validation"] else split
-    url = f"https://huggingface.co/datasets/uitnlp/vietnamese_students_feedback/resolve/refs%2Fconvert%2Fparquet/default/{url_split}/0000.parquet?download=true"
+    file_path = f"data/vsfc_{split}.csv"
     try:
-        df = pd.read_parquet(url)
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+        else:
+            ds = load_dataset("uitnlp/vietnamese_students_feedback", split=split)
+            df = ds.to_pandas()
+            
         texts = df["sentence"].tolist()
         labels = [int(v) for v in df["sentiment"].tolist()]
         if max_samples and len(texts) > max_samples:
@@ -107,19 +116,21 @@ def load_vsfc(split="test", max_samples=None):
         return ["Câu mẫu"], [2], [3]
 
 def load_tweeteval(split="test", max_samples=None, unlabeled=False):
-    """
-    Load Twitter data. 
-    Nếu unlabeled=True, toàn bộ nhãn sẽ bị gán thành -1 để đảm bảo DANN chuẩn.
-    """
-    print(f"[Dataset] Loading TweetEval | split={split} | unlabeled={unlabeled}")
+    file_path = f"data/twitter_{split}.csv"
+    print(f"[Dataset] Loading Twitter | file={file_path} | unlabeled={unlabeled}")
     try:
-        ds = load_dataset("cardiffnlp/tweet_eval", "sentiment", split=split)
-        texts = list(ds["text"])
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+        else:
+            ds = load_dataset("cardiffnlp/tweet_eval", "sentiment", split=split)
+            df = ds.to_pandas()
+            
+        texts = df["text"].tolist()
         
         if unlabeled:
-            labels = [-1] * len(texts) # Ẩn nhãn hoàn toàn
+            labels = [-1] * len(texts)
         else:
-            labels = [int(v) for v in list(ds["label"])]
+            labels = [int(v) for v in df["label"].tolist()]
         
         if max_samples and len(texts) > max_samples:
             random.seed(42)
