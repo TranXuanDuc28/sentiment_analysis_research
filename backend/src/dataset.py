@@ -91,6 +91,19 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
             if df.empty:
                 print(f"⚠️ Cảnh báo: Không tìm thấy dữ liệu cho ngôn ngữ '{lang_code}' trong file.")
         
+        # Lọc theo lĩnh vực (Domain) - QUAN TRỌNG cho S1, S2, S3
+        if domain.lower() != "all":
+            # Chuẩn hóa tên domain (Amazon dùng 'book', 'electronics'...)
+            domain_norm = domain.lower()
+            if domain_norm == "books": domain_norm = "book"
+            
+            if "product_category" in df.columns:
+                df = df[df["product_category"] == domain_norm]
+                if df.empty:
+                    print(f"⚠️ Cảnh báo: Không tìm thấy dữ liệu cho domain '{domain_norm}' trong file.")
+            else:
+                print(f"⚠️ Cảnh báo: File không có cột 'product_category', không thể lọc domain '{domain}'.")
+        
         texts = df[text_col].tolist()
         # Nếu là 'label' (0-4) thì +1, nếu là 'stars' (1-5) thì giữ nguyên để đưa vào hàm rating_to_sentiment_amazon
         labels = [rating_to_sentiment_amazon(int(v) + (1 if label_col == "label" else 0)) for v in df[label_col].tolist()]

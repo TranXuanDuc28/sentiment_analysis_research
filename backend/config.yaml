@@ -13,13 +13,13 @@ training:
   dann_alpha: 1.0
 
 scenarios:
-  max_samples_train: 3000  # Giảm xuống 3000 để train nhanh hơn
+  max_samples_train: 10000  # Giảm xuống 3000 để train nhanh hơn
   max_samples_test: 1000
   
   # Bật/Tắt các kịch bản tại đây
   run_s1: true   # Baseline
-  run_s2: false  # Cross-domain (Có thể bỏ qua)
-  run_s3: false  # Multi-domain MDL (Có thể bỏ qua)
+  run_s2: true  # Cross-domain (Có thể bỏ qua)
+  run_s3: true  # Multi-domain MDL (Có thể bỏ qua)
   run_s4: true   # DANN Adaptation (BẮT BUỘC)
   run_s5: true   # Cross-lingual (QUAN TRỌNG)
-  run_s6: false  # Multilingual (Có thể bỏ qua)
+  run_s6: true  # Multilingual (Có thể bỏ qua)
