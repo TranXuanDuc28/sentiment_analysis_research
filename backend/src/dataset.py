@@ -54,8 +54,8 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
     print(f"[Dataset] Loading Amazon | lang={lang_code} | domain={domain} | split={split}")
     
     try:
-        # Sử dụng thư viện datasets để tải và lọc theo category (domain)
-        dataset = load_dataset("amazon_reviews_multi", lang_code, split=split)
+        # Thêm trust_remote_code=True để HuggingFace cho phép tải script cũ
+        dataset = load_dataset("amazon_reviews_multi", lang_code, split=split, trust_remote_code=True)
         
         # Chuẩn hóa tên domain (Amazon dùng 'book' thay vì 'books')
         domain_norm = domain.lower()
@@ -85,8 +85,10 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
         return texts, labels, [DOMAIN_MAP.get(domain.lower(), 0)] * len(texts)
     except Exception as e:
         print(f"[Dataset] Error loading Amazon: {e}")
-        # Fallback dữ liệu mẫu để không crash
-        return ["Great product"]*10 + ["Bad product"]*10, [2]*10 + [0]*10, [0]*20
+        # Fallback có đủ 3 nhãn (0, 1, 2) để tránh lỗi CrossEntropyLoss weights
+        texts = ["Sản phẩm tệ"]*10 + ["Bình thường"]*10 + ["Rất tốt"]*10
+        labels = [0]*10 + [1]*10 + [2]*10
+        return texts, labels, [0]*30
 
 def load_multi_domain_amazon(domains=["books", "electronics", "apparel"], max_samples=1000):
     """Gộp nhiều domain Amazon lại với nhau."""
