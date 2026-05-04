@@ -51,21 +51,45 @@ class SentimentDataset(Dataset):
 
 def load_amazon_split(language, domain, split="train", max_samples=None):
     lang_code = "en" if language == "english" else "vi"
-    file_path = f"data/amazon_{lang_code}_{split}.csv"
+    # Kiểm tra linh hoạt các đường dẫn file
+    possible_paths = [
+        f"data/amazon_{lang_code}_{split}.parquet",
+        f"data/amazon_{lang_code}_{split}.csv",
+        f"data/amazon_{split}.csv", # Khớp với amazon_train.csv của bạn
+        f"data/amazon/{split}.csv"  # Khớp với folder amazon/
+    ]
     
-    print(f"[Dataset] Loading Amazon | file={file_path} | domain={domain}")
-    
+    df = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            print(f"[Dataset] Found Amazon at: {p}")
+            if p.endswith(".parquet"):
+                df = pd.read_parquet(p)
+            else:
+                try:
+                    df = pd.read_csv(p)
+                    # Check columns to ensure it's not a headerless CSV
+                    if "review_body" not in df.columns and "text" not in df.columns:
+                        df = pd.read_csv(p, header=None, names=["idx", "review_id", "product_id", "reviewer_id", "stars", "review_body", "review_title", "language", "product_category"])
+                except:
+                    df = pd.read_csv(p, header=None, names=["idx", "review_id", "product_id", "reviewer_id", "stars", "review_body", "review_title", "language", "product_category"])
+            break
+
     try:
-        if os.path.exists(file_path):
-            df = pd.read_csv(file_path)
-        else:
+        if df is None:
             print(f"⚠️ Không thấy file cục bộ, đang tải online...")
-            dataset = load_dataset("mteb/amazon_reviews_multi", lang_code, split=split)
+            dataset = load_dataset("mteb/amazon_reviews_multi", lang_code, split=split, trust_remote_code=True)
             df = dataset.to_pandas()
 
         # Tự động chọn tên cột (Hỗ trợ cả bản MTEB và bản Amazon gốc)
         text_col = "text" if "text" in df.columns else "review_body"
         label_col = "label" if "label" in df.columns else "stars"
+        
+        # Lọc theo ngôn ngữ nếu có cột 'language' (MARC gốc thường có cột này)
+        if "language" in df.columns:
+            df = df[df["language"] == lang_code]
+            if df.empty:
+                print(f"⚠️ Cảnh báo: Không tìm thấy dữ liệu cho ngôn ngữ '{lang_code}' trong file.")
         
         texts = df[text_col].tolist()
         # Nếu là 'label' (0-4) thì +1, nếu là 'stars' (1-5) thì giữ nguyên để đưa vào hàm rating_to_sentiment_amazon
@@ -100,10 +124,13 @@ def load_multi_domain_amazon(domains=["books", "electronics", "apparel"], max_sa
     return all_texts, all_labels, all_d_ids
 
 def load_vsfc(split="test", max_samples=None):
-    file_path = f"data/vsfc_{split}.csv"
+    csv_path = f"data/vsfc_{split}.csv"
+    pq_path = f"data/vsfc_{split}.parquet"
     try:
-        if os.path.exists(file_path):
-            df = pd.read_csv(file_path)
+        if os.path.exists(pq_path):
+            df = pd.read_parquet(pq_path)
+        elif os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
         else:
             ds = load_dataset("uitnlp/vietnamese_students_feedback", split=split)
             df = ds.to_pandas()
@@ -120,11 +147,14 @@ def load_vsfc(split="test", max_samples=None):
         return ["Câu mẫu"], [2], [3]
 
 def load_tweeteval(split="test", max_samples=None, unlabeled=False):
-    file_path = f"data/twitter_{split}.csv"
-    print(f"[Dataset] Loading Twitter | file={file_path} | unlabeled={unlabeled}")
+    csv_path = f"data/twitter_{split}.csv"
+    pq_path = f"data/twitter_{split}.parquet"
+    print(f"[Dataset] Loading Twitter | split={split} | unlabeled={unlabeled}")
     try:
-        if os.path.exists(file_path):
-            df = pd.read_csv(file_path)
+        if os.path.exists(pq_path):
+            df = pd.read_parquet(pq_path)
+        elif os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
         else:
             ds = load_dataset("cardiffnlp/tweet_eval", "sentiment", split=split)
             df = ds.to_pandas()
