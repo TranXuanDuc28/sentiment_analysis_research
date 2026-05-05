@@ -19,7 +19,7 @@ from src.utils import print_banner, save_results, set_seed
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--s", type=str, default="0", help="Scenario to run (0=all, 1a, 1b, 2, 3, 4, 5, 6, 7)")
+    parser.add_argument("--s", type=str, default="0", help="Scenario to run (0=all, 1a, 1b, 2, 3, 4, 5, 6a, 6b, 7)")
     args = parser.parse_args()
 
     with open("config.yaml", "r", encoding="utf-8") as f:
@@ -173,9 +173,9 @@ def main():
         res_s5 = evaluate_model(model, test_loader, device, "S5_Pure_Multidomain_Amazon")
         save_results(res_s5, "results/results_s5.json")
 
-    # --- S6: Domain Adaptation DANN (Source: IMDb, Target: Amazon) ---
-    if args.s in ["0", "6"]:
-        print_banner("Scenario 6: Domain Adaptation DANN (Source: IMDb, Target: Amazon)")
+    # --- S6a: Single-Source Domain Adaptation DANN (Source: IMDb, Target: Amazon) ---
+    if args.s in ["0", "6", "6a"]:
+        print_banner("Scenario 6a: Single-Source Domain Adaptation DANN (Source: IMDb, Target: Amazon)")
         s_texts, s_labels, s_d_ids = load_imdb("train", max_samples=MAX_TRAIN)
         t_texts, t_labels, t_d_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN)
         
@@ -190,8 +190,8 @@ def main():
         
         test_texts, test_labels, test_d_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=BATCH_SIZE)
-        res_s6 = evaluate_model(model_dann, test_loader, device, "S6_DANN_Amazon")
-        save_results(res_s6, "results/results_s6.json")
+        res_s6a = evaluate_model(model_dann, test_loader, device, "S6a_DANN_Amazon")
+        save_results(res_s6a, "results/results_s6a.json")
         
         # Visualize Domain Alignment (After DANN)
         try:
@@ -199,7 +199,42 @@ def main():
             vis_tgt_t, vis_tgt_l, vis_tgt_d = load_amazon_split("english", "all", "test", max_samples=300)
             ld_src = make_dataloader(vis_src_t, vis_src_l, vis_src_d, tokenizer, batch_size=BATCH_SIZE)
             ld_tgt = make_dataloader(vis_tgt_t, vis_tgt_l, vis_tgt_d, tokenizer, batch_size=BATCH_SIZE)
-            visualize_tsne(model_dann, tokenizer, [ld_src, ld_tgt], ["Source (IMDb)", "Target (Amazon)"], device, "S6_Domain_Alignment_After_DANN")
+            visualize_tsne(model_dann, tokenizer, [ld_src, ld_tgt], ["Source (IMDb)", "Target (Amazon)"], device, "S6a_Domain_Alignment_After_DANN")
+        except Exception as e:
+            print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
+
+    # --- S6b: Multi-Source Domain Adaptation DANN (Source: IMDb + Yelp, Target: Amazon) ---
+    if args.s in ["0", "6", "6b"]:
+        print_banner("Scenario 6b: Multi-Source Domain Adaptation DANN (Source: IMDb + Yelp, Target: Amazon)")
+        t1, l1, d1 = load_imdb("train", max_samples=MAX_TRAIN//2)
+        t2, l2, d2 = load_yelp("train", max_samples=MAX_TRAIN//2)
+        s_texts, s_labels, s_d_ids = t1 + t2, l1 + l2, d1 + d2
+        t_texts, t_labels, t_d_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN)
+        
+        s_train, s_val, l_train, l_val, d_train, d_val = train_test_split(s_texts, s_labels, s_d_ids, test_size=0.1, random_state=42)
+        s_loader = make_dataloader(s_train, l_train, d_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+        val_loader = make_dataloader(s_val, l_val, d_val, tokenizer, batch_size=BATCH_SIZE)
+        t_loader = make_dataloader(t_texts, t_labels, t_d_ids, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+        
+        model_dann = DANNModel(config["model"]["name"])
+        weights = compute_class_weights(l_train)
+        model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+        
+        test_texts, test_labels, test_d_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
+        test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=BATCH_SIZE)
+        res_s6b = evaluate_model(model_dann, test_loader, device, "S6b_MultiSource_DANN_Amazon")
+        save_results(res_s6b, "results/results_s6b.json")
+        
+        # Visualize Domain Alignment (After Multi-Source DANN)
+        try:
+            vis_s1_t, vis_s1_l, vis_s1_d = load_imdb("test", max_samples=150)
+            vis_s2_t, vis_s2_l, vis_s2_d = load_yelp("test", max_samples=150)
+            vis_src_t, vis_src_l, vis_src_d = vis_s1_t + vis_s2_t, vis_s1_l + vis_s2_l, vis_s1_d + vis_s2_d
+            
+            vis_tgt_t, vis_tgt_l, vis_tgt_d = load_amazon_split("english", "all", "test", max_samples=300)
+            ld_src = make_dataloader(vis_src_t, vis_src_l, vis_src_d, tokenizer, batch_size=BATCH_SIZE)
+            ld_tgt = make_dataloader(vis_tgt_t, vis_tgt_l, vis_tgt_d, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model_dann, tokenizer, [ld_src, ld_tgt], ["Sources (IMDb+Yelp)", "Target (Amazon)"], device, "S6b_MultiSource_Domain_Alignment")
         except Exception as e:
             print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
