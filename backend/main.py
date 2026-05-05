@@ -89,9 +89,9 @@ def main():
         res_s2 = evaluate_model(model, test_loader_vi, device, "S2_ZeroShot_IMDb_VSFC")
         save_results(res_s2, "results/results_s2.json")
 
-    # --- S3: Joint Multilingual Learning (IMDb + VSFC -> VSFC) ---
-    if args.s in ["0", "3"]:
-        print_banner("Scenario 3: Joint Multilingual Learning (IMDb + VSFC -> VSFC)")
+    # --- S3: Joint Multilingual Learning (IMDb + VSFC) ---
+    if args.s in ["0", "3", "3a", "3b"]:
+        print_banner("Scenario 3: Joint Multilingual Learning (IMDb + VSFC)")
         t_en, l_en, d_en = load_imdb("train", max_samples=MAX_TRAIN//2)
         t_vi, l_vi, d_vi = load_vsfc("train", max_samples=MAX_TRAIN//2)
         t_all, l_all, d_all = t_en + t_vi, l_en + l_vi, d_en + d_vi
@@ -104,10 +104,19 @@ def main():
         weights = compute_class_weights(l_train)
         model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
         
+        # Test 3a: On Vietnamese
+        print("\n--- S3a: Testing on Vietnamese (VSFC) ---")
         test_vi_t, test_vi_l, test_vi_d = load_vsfc("test", max_samples=MAX_TEST)
         test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, tokenizer, batch_size=BATCH_SIZE)
-        res_s3 = evaluate_model(model, test_loader_vi, device, "S3_Joint_Multilingual_VSFC")
-        save_results(res_s3, "results/results_s3.json")
+        res_s3a = evaluate_model(model, test_loader_vi, device, "S3a_Joint_Multilingual_VSFC")
+        save_results(res_s3a, "results/results_s3a.json")
+
+        # Test 3b: On English (Optional / Nâng điểm)
+        print("\n--- S3b: Testing on English (IMDb) ---")
+        test_en_t, test_en_l, test_en_d = load_imdb("test", max_samples=MAX_TEST)
+        test_loader_en = make_dataloader(test_en_t, test_en_l, test_en_d, tokenizer, batch_size=BATCH_SIZE)
+        res_s3b = evaluate_model(model, test_loader_en, device, "S3b_Joint_Multilingual_IMDb")
+        save_results(res_s3b, "results/results_s3b.json")
 
     # --- S4: Zero-Shot Domain Transfer (IMDb -> Amazon) ---
     if args.s in ["0", "4"]:
