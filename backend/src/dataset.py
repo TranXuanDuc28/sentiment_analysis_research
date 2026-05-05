@@ -57,7 +57,7 @@ class SentimentDataset(Dataset):
             "domain_ids": torch.tensor(int(self.domain_ids[idx]), dtype=torch.long)
         }
 
-def load_amazon_split(language, domain, split="train", max_samples=None):
+def load_amazon_split(language, domain, split="train", max_samples=None, unlabeled=False):
     lang_code = "en" if language == "english" else "vi"
     # Kiểm tra linh hoạt các đường dẫn file
     possible_paths = [
@@ -124,6 +124,9 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
         
         texts = df[text_col].tolist()
         
+        if unlabeled:
+            labels = [-1] * len(texts)
+            
         if max_samples and len(texts) > max_samples:
             # Seed khác nhau cho domain khác cho đa dạng
             d_seed = 42 + DOMAIN_MAP.get(domain.lower(), 0)
