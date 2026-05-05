@@ -64,12 +64,28 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
     model = BaseModel(config["model"]["name"])
     
-    # Ví dụ: Vẽ so sánh EN vs VI
-    print("Mẫu: Vẽ t-SNE so sánh không gian đặc trưng Anh - Việt")
-    t_en, l_en, d_en = load_amazon_split("english", "books", "test", max_samples=300)
-    t_vi, l_vi, d_vi = load_vsfc("test", max_samples=300)
-    
-    ld_en = make_dataloader(t_en, l_en, d_en, tokenizer, batch_size=16)
-    ld_vi = make_dataloader(t_vi, l_vi, d_vi, tokenizer, batch_size=16)
-    
-    visualize_tsne(model, tokenizer, [ld_en, ld_vi], ["English (Amazon)", "Vietnamese (VSFC)"], device, "Language Alignment Check")
+    print("Vẽ biểu đồ t-SNE từ checkpoint đã lưu...")
+    if os.path.exists("checkpoints/model_imdb.pt"):
+        model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
+        
+        # 1. Vẽ S3/S2 (Multilingual Alignment: IMDb vs VSFC)
+        print("1. Đang vẽ Multilingual Alignment (English vs Vietnamese)...")
+        t_en, l_en, d_en = load_imdb("test", max_samples=300)
+        t_vi, l_vi, d_vi = load_vsfc("test", max_samples=300)
+        
+        ld_en = make_dataloader(t_en, l_en, d_en, tokenizer, batch_size=16)
+        ld_vi = make_dataloader(t_vi, l_vi, d_vi, tokenizer, batch_size=16)
+        visualize_tsne(model, tokenizer, [ld_en, ld_vi], ["English (IMDb)", "Vietnamese (VSFC)"], device, "S3_Multilingual_Alignment")
+        
+        # 2. Vẽ S4 (Domain Gap: IMDb vs Amazon)
+        print("2. Đang vẽ Domain Gap (IMDb vs Amazon)...")
+        t_src, l_src, d_src = load_imdb("test", max_samples=300)
+        t_tgt, l_tgt, d_tgt = load_amazon_split("english", "all", "test", max_samples=300)
+        
+        ld_src = make_dataloader(t_src, l_src, d_src, tokenizer, batch_size=16)
+        ld_tgt = make_dataloader(t_tgt, l_tgt, d_tgt, tokenizer, batch_size=16)
+        visualize_tsne(model, tokenizer, [ld_src, ld_tgt], ["Source (IMDb)", "Target (Amazon)"], device, "S4_Domain_Gap_Before_DANN")
+        
+        print("✅ Đã vẽ xong 2 biểu đồ! Vui lòng kiểm tra thư mục results/plots/")
+    else:
+        print("Không tìm thấy checkpoints/model_imdb.pt. Vui lòng chạy S1a trước.")
