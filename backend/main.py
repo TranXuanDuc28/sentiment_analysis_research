@@ -104,6 +104,7 @@ def main():
         model = BaseModel(config["model"]["name"])
         weights = compute_class_weights(l_train)
         model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+        torch.save(model.state_dict(), "checkpoints/model_s3_joint.pt")
         
         # Test 3a: On Vietnamese
         print("\n--- S3a: Testing on Vietnamese (VSFC) ---")
@@ -177,7 +178,8 @@ def main():
     if args.s in ["0", "6", "6a"]:
         print_banner("Scenario 6a: Single-Source Domain Adaptation DANN (Source: IMDb, Target: Amazon)")
         s_texts, s_labels, s_d_ids = load_imdb("train", max_samples=MAX_TRAIN)
-        t_texts, t_labels, t_d_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN)
+        # Target data (Amazon) MUST BE unlabeled for Unsupervised Domain Adaptation
+        t_texts, t_labels, t_d_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN, unlabeled=True)
         
         s_train, s_val, l_train, l_val, d_train, d_val = train_test_split(s_texts, s_labels, s_d_ids, test_size=0.1, random_state=42)
         s_loader = make_dataloader(s_train, l_train, d_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
@@ -209,7 +211,8 @@ def main():
         t1, l1, d1 = load_imdb("train", max_samples=MAX_TRAIN//2)
         t2, l2, d2 = load_yelp("train", max_samples=MAX_TRAIN//2)
         s_texts, s_labels, s_d_ids = t1 + t2, l1 + l2, d1 + d2
-        t_texts, t_labels, t_d_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN)
+        # Target data (Amazon) MUST BE unlabeled for Unsupervised Domain Adaptation
+        t_texts, t_labels, t_d_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN, unlabeled=True)
         
         s_train, s_val, l_train, l_val, d_train, d_val = train_test_split(s_texts, s_labels, s_d_ids, test_size=0.1, random_state=42)
         s_loader = make_dataloader(s_train, l_train, d_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
