@@ -6,11 +6,23 @@ from transformers import get_linear_schedule_with_warmup
 from tqdm import tqdm
 from src.utils import save_model, print_banner
 
-def compute_class_weights(labels):
+def compute_class_weights(labels, num_classes=3):
     valid_labels = [l for l in labels if l >= 0]
     if not valid_labels: return None
-    from sklearn.utils.class_weight import compute_class_weight
-    weights = compute_class_weight(class_weight='balanced', classes=np.unique(valid_labels), y=valid_labels)
+    
+    from collections import Counter
+    counts = Counter(valid_labels)
+    total = len(valid_labels)
+    
+    weights = []
+    for i in range(num_classes):
+        if counts[i] > 0:
+            # sklearn's 'balanced' heuristic: n_samples / (n_classes * np.bincount(y))
+            w = total / (len(counts) * counts[i])
+        else:
+            w = 0.0
+        weights.append(w)
+        
     return torch.tensor(weights, dtype=torch.float)
 
 def train_model(model, tokenizer, train_loader, val_loader=None, num_epochs=5, lr=3e-5, device="cuda", class_weights=None):
