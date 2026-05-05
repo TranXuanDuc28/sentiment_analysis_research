@@ -194,7 +194,8 @@ def main():
             print("⚠️ Cảnh báo: Train DANN từ đầu rất dễ bị sập (Mode Collapse). Hãy chạy S1a trước.")
             
         weights = compute_class_weights(l_train)
-        model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+        # Giảm Learning Rate xuống 10 lần vì mô hình đã được pre-train
+        model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
         
         test_texts, test_labels, test_d_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=BATCH_SIZE)
@@ -234,7 +235,8 @@ def main():
             model_dann.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device), strict=False)
             
         weights = compute_class_weights(l_train)
-        model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+        # Giảm Learning Rate xuống 10 lần vì mô hình đã được pre-train
+        model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
         
         test_texts, test_labels, test_d_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=BATCH_SIZE)

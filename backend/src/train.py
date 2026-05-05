@@ -94,9 +94,9 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
         
         pbar = tqdm(source_loader, desc=f"DANN Epoch {epoch}")
         for s_batch in pbar:
-            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 1.0
+            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 0.1 for Transformers
             p = float(current_step) / total_steps
-            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 1.0
+            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 0.1
             
             # 2. Source batch
             s_input_ids = s_batch["input_ids"].to(device)
