@@ -54,6 +54,7 @@ def main():
         test_texts, test_labels, test_d_ids = load_amazon_split("english", "books", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=config["training"]["batch_size"])
         global_results["S1a"] = evaluate_model(model, test_loader, device, "S1a_Baseline_EN")
+        save_results(global_results["S1a"], "results/results_s1a.json")
 
         print_banner("Scenario 1b: Baseline Vietnamese (XLM-R)")
         t_all_vi, l_all_vi, d_all_vi = load_vsfc("train", max_samples=config["scenarios"]["max_samples_train"])
@@ -69,6 +70,7 @@ def main():
         test_texts_vi, test_labels_vi, test_d_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
         test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, tokenizer, batch_size=config["training"]["batch_size"])
         global_results["S1b"] = evaluate_model(model_vi, test_loader_vi, device, "S1b_XLMR_VI")
+        save_results(global_results["S1b"], "results/results_s1b.json")
         
         print("\nComparing with PhoBERT baseline...")
         try:
@@ -82,6 +84,7 @@ def main():
             test_texts_vi_seg = word_segment_vietnamese(test_texts_vi)
             test_loader_ph = make_dataloader(test_texts_vi_seg, test_labels_vi, test_d_ids_vi, phobert_tok, batch_size=config["training"]["batch_size"])
             global_results["S1b_PhoBERT"] = evaluate_model(phobert_model, test_loader_ph, device, "S1b_PhoBERT_VI")
+            save_results(global_results["S1b_PhoBERT"], "results/results_s1b_phobert.json")
         except: pass
 
     # 2. SCENARIO 2: Zero-shot Cross-lingual (EN -> VI)
@@ -95,6 +98,7 @@ def main():
         test_texts_vi, test_labels_vi, test_d_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
         test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, tokenizer, batch_size=config["training"]["batch_size"])
         res_s2 = evaluate_model(model, test_loader_vi, device, "S2_ZeroShot_EN_VI")
+        save_results(res_s2, "results/results_s2.json")
         
         if "S1b" in global_results:
             gap = global_results["S1b"]["f1_macro"] - res_s2["f1_macro"]
@@ -117,7 +121,8 @@ def main():
         
         test_texts, test_labels, test_d_ids = load_amazon_split("english", "apparel", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=config["training"]["batch_size"])
-        evaluate_model(model, test_loader, device, "S3_UnseenDomain_Apparel")
+        res_s3 = evaluate_model(model, test_loader, device, "S3_UnseenDomain_Apparel")
+        save_results(res_s3, "results/results_s3.json")
 
     # 4. SCENARIO 4: Domain Adaptation (DANN)
     if args.s in [0, 4]:
@@ -144,6 +149,7 @@ def main():
         weights = compute_class_weights(l_train)
         model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=int(config["training"]["epochs"]), lr=float(config["training"]["learning_rate"]), device=device, class_weights=weights)
         res_s4b = evaluate_model(model_dann, test_loader, device, "S4b_DANN_Yelp")
+        save_results(res_s4b, "results/results_s4b.json")
         diff = (res_s4b['f1_macro'] - res_s4a['f1_macro']) * 100
         print(f"\n🚀 INSIGHT: DANN thay đổi {diff:.2f}% F1-Macro trên Yelp.")
         global_results["S4b"] = res_s4b
@@ -167,6 +173,7 @@ def main():
         test_vi_t, test_vi_l, test_vi_d = load_vsfc("test", max_samples=MAX_TEST)
         test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, tokenizer, batch_size=config["training"]["batch_size"])
         res_s5_vi = evaluate_model(model, test_loader_vi, device, "S5_Joint_VI")
+        save_results(res_s5_vi, "results/results_s5.json")
         
         if "S1b" in global_results:
             gain = res_s5_vi["f1_macro"] - global_results["S1b"]["f1_macro"]
@@ -195,6 +202,7 @@ def main():
         test_texts, test_labels, test_d_ids = load_imdb("test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=config["training"]["batch_size"])
         res_s6 = evaluate_model(model_hybrid, test_loader, device, "S6_Hybrid_IMDB")
+        save_results(res_s6, "results/results_s6.json")
         
         if "S4b" in global_results:
             improvement = res_s6["f1_macro"] - global_results["S4b"]["f1_macro"]
@@ -226,12 +234,14 @@ def main():
         test_vi_t, test_vi_l, test_vi_d = load_vsfc("test", max_samples=MAX_TEST)
         test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, tokenizer, batch_size=config["training"]["batch_size"])
         res_s7_vi = evaluate_model(model_universal, test_loader_vi, device, "S7_Universal_VI")
+        save_results(res_s7_vi, "results/results_s7_vi.json")
         
         # Test 2: On Unseen English Domain (Apparel)
         print("\nTesting Universal Model on Unseen English Domain (Apparel)...")
         test_en_t, test_en_l, test_en_d = load_amazon_split("english", "apparel", "test", max_samples=MAX_TEST)
         test_loader_en = make_dataloader(test_en_t, test_en_l, test_en_d, tokenizer, batch_size=config["training"]["batch_size"])
         res_s7_en = evaluate_model(model_universal, test_loader_en, device, "S7_Universal_EN_Unseen")
+        save_results(res_s7_en, "results/results_s7_en.json")
         
         print("\n📊 FINAL RESEARCH ANALYSIS:")
         try:
