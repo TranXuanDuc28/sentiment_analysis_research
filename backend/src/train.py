@@ -143,13 +143,18 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
         if val_loader:
             model.eval()
             val_loss = 0
+            correct, total = 0, 0
             with torch.no_grad():
                 for b in val_loader:
                     out, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
                     val_loss += s_criterion(out, b["labels"].to(device)).item()
+                    preds = torch.argmax(out, dim=1)
+                    correct += (preds == b["labels"].to(device)).sum().item()
+                    total += b["labels"].size(0)
             
             avg_val_loss = val_loss / len(val_loader)
-            print(f" > DANN Epoch {epoch} - Source Val Loss: {avg_val_loss:.4f}")
+            val_acc = 100 * correct / total
+            print(f" > DANN Epoch {epoch} - Source Val Loss: {avg_val_loss:.4f} - Source Val Acc: {val_acc:.2f}%")
             early_stopping(avg_val_loss)
             if early_stopping.early_stop:
                 break
