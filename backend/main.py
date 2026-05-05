@@ -187,6 +187,12 @@ def main():
         t_loader = make_dataloader(t_texts, t_labels, t_d_ids, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         
         model_dann = DANNModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_imdb.pt"):
+            print("🚀 Nạp não bộ đã học từ IMDb vào DANN để tránh sụp đổ đối nghịch...")
+            model_dann.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device), strict=False)
+        else:
+            print("⚠️ Cảnh báo: Train DANN từ đầu rất dễ bị sập (Mode Collapse). Hãy chạy S1a trước.")
+            
         weights = compute_class_weights(l_train)
         model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
         
@@ -220,6 +226,13 @@ def main():
         t_loader = make_dataloader(t_texts, t_labels, t_d_ids, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         
         model_dann = DANNModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_s5_multidomain.pt"):
+            print("🚀 Nạp não bộ Multi-domain (IMDb+Yelp) vào DANN để tránh sụp đổ đối nghịch...")
+            model_dann.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device), strict=False)
+        elif os.path.exists("checkpoints/model_imdb.pt"):
+            print("🚀 Nạp não bộ IMDb vào DANN tạm thời...")
+            model_dann.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device), strict=False)
+            
         weights = compute_class_weights(l_train)
         model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
         
