@@ -24,9 +24,8 @@ DOMAIN_MAP = {
 }
 
 def rating_to_sentiment_amazon(rating: int) -> int:
-    if rating <= 2: return 0
-    elif rating == 3: return 1
-    else: return 2
+    # Not used anymore since we map inline, but keeping signature if imported elsewhere
+    return 0 if rating <= 2 else 1
 
 def word_segment_vietnamese(texts):
     """Tách từ tiếng Việt cho PhoBERT"""
@@ -113,9 +112,17 @@ def load_amazon_split(language, domain, split="train", max_samples=None):
             else:
                 print(f"⚠️ Cảnh báo: File không có cột 'product_category', không thể lọc domain '{domain}'.")
         
+        # Filter out Neutral to make it Binary (0 = Negative, 1 = Positive)
+        if label_col == "label":
+            # 0,1 are Negative; 2 is Neutral; 3,4 are Positive
+            df = df[~df[label_col].isin([2, "2", 2.0])]
+            labels = [0 if int(v) < 2 else 1 for v in df[label_col].tolist()]
+        else:
+            # 1,2 are Negative; 3 is Neutral; 4,5 are Positive
+            df = df[~df[label_col].isin([3, "3", 3.0])]
+            labels = [0 if int(v) < 3 else 1 for v in df[label_col].tolist()]
+        
         texts = df[text_col].tolist()
-        # Nếu là 'label' (0-4) thì +1, nếu là 'stars' (1-5) thì giữ nguyên để đưa vào hàm rating_to_sentiment_amazon
-        labels = [rating_to_sentiment_amazon(int(v) + (1 if label_col == "label" else 0)) for v in df[label_col].tolist()]
         
         if max_samples and len(texts) > max_samples:
             # Seed khác nhau cho domain khác cho đa dạng
@@ -157,8 +164,10 @@ def load_vsfc(split="test", max_samples=None):
             ds = load_dataset("uitnlp/vietnamese_students_feedback", split=split)
             df = ds.to_pandas()
             
+        # Filter out Neutral (1)
+        df = df[~df["sentiment"].isin([1, "1", 1.0])]
         texts = df["sentence"].tolist()
-        labels = [int(v) for v in df["sentiment"].tolist()]
+        labels = [1 if int(v) == 2 else 0 for v in df["sentiment"].tolist()]
         if max_samples and len(texts) > max_samples:
             random.seed(42)
             indices = random.sample(range(len(texts)), max_samples)
@@ -178,8 +187,8 @@ def load_yelp(split="test", max_samples=None, unlabeled=False):
         if unlabeled:
             labels = [-1] * len(texts)
         else:
-            # Map binary (0,1) to ternary (0,2) to match Amazon
-            labels = [2 if int(v) == 1 else 0 for v in df["label"].tolist()]
+            # Map binary (0,1) to binary (0,1)
+            labels = [1 if int(v) == 1 else 0 for v in df["label"].tolist()]
         
         if max_samples and len(texts) > max_samples:
             random.seed(42)
@@ -201,8 +210,8 @@ def load_imdb(split="test", max_samples=None, unlabeled=False):
         if unlabeled:
             labels = [-1] * len(texts)
         else:
-            # Map binary (0,1) to ternary (0,2) to match Amazon
-            labels = [2 if int(v) == 1 else 0 for v in df["label"].tolist()]
+            # Map binary (0,1) to binary (0,1)
+            labels = [1 if int(v) == 1 else 0 for v in df["label"].tolist()]
         
         if max_samples and len(texts) > max_samples:
             random.seed(42)

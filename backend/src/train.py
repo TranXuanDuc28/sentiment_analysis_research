@@ -6,7 +6,7 @@ from transformers import get_linear_schedule_with_warmup
 from tqdm import tqdm
 from src.utils import save_model, print_banner
 
-def compute_class_weights(labels, num_classes=3):
+def compute_class_weights(labels, num_classes=2):
     valid_labels = [l for l in labels if l >= 0]
     if not valid_labels: return None
     

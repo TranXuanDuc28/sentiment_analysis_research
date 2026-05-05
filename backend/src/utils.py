@@ -29,8 +29,8 @@ def print_dataset_statistics(labels, name):
     print("-" * 45)
     print(f"{'Class':<15} | {'Count':<10} | {'Percentage':<10}")
     print("-" * 45)
-    mapping = {0: "Negative", 1: "Neutral", 2: "Positive"}
-    for i in range(3):
+    mapping = {0: "Negative", 1: "Positive"}
+    for i in range(2):
         count = counts.get(i, 0)
         perc = (count / total) * 100 if total > 0 else 0
         print(f"{mapping[i]:<15} | {count:<10} | {perc:>10.2f}%")

@@ -16,7 +16,7 @@ def print_dataset_statistics(texts, labels, domain_name="Unknown"):
     print(f"{'Class':<15} | {'Count':<10} | {'Percentage':<10}")
     print("-" * 45)
     
-    label_names = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    label_names = {0: "Negative", 1: "Positive"}
     for label_id in sorted(label_names.keys()):
         count = counts.get(label_id, 0)
         percentage = (count / total) * 100 if total > 0 else 0

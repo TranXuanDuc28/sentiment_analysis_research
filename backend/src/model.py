@@ -16,7 +16,7 @@ class GradientReversalFunction(Function):
 
 class BaseModel(nn.Module):
     """Mô hình phân loại cảm xúc tiêu chuẩn (không có DANN)"""
-    def __init__(self, model_name="xlm-roberta-base", num_labels=3):
+    def __init__(self, model_name="xlm-roberta-base", num_labels=2):
         super(BaseModel, self).__init__()
         self.encoder = AutoModel.from_pretrained(model_name)
         self.sentiment_head = nn.Sequential(
@@ -35,7 +35,7 @@ class BaseModel(nn.Module):
 
 class DANNModel(nn.Module):
     """Mô hình Domain Adversarial Neural Network"""
-    def __init__(self, model_name="xlm-roberta-base", num_labels=3):
+    def __init__(self, model_name="xlm-roberta-base", num_labels=2):
         super(DANNModel, self).__init__()
         self.encoder = AutoModel.from_pretrained(model_name)
         
