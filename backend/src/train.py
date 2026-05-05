@@ -123,11 +123,16 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             loss_s_domain = d_criterion(s_domain_out, s_domain_labels)
             
             # Forward Target
-            _, t_domain_out = model(t_input_ids, t_attention_mask, alpha=lambd)
+            t_class_out, t_domain_out = model(t_input_ids, t_attention_mask, alpha=lambd)
             loss_t_domain = d_criterion(t_domain_out, t_domain_labels)
             
-            # Total Loss
-            total_loss = loss_s_class + (loss_s_domain + loss_t_domain)
+            # 🚀 TUYỆT CHIÊU: Target Entropy Minimization (Chống sụp đổ cấu trúc cảm xúc)
+            # Ép Target phải tự chia làm 2 cụm (Khen/Chê) rõ ràng, không được gom thành 1 cục
+            t_probs = torch.softmax(t_class_out, dim=1)
+            loss_t_entropy = -torch.mean(torch.sum(t_probs * torch.log(t_probs + 1e-8), dim=1))
+            
+            # Total Loss (Kết hợp DANN và Entropy)
+            total_loss = loss_s_class + (loss_s_domain + loss_t_domain) + 0.1 * loss_t_entropy
             total_loss.backward()
             
             # Gradient Clipping to stabilize Adversarial Training
