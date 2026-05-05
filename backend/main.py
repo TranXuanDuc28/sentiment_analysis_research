@@ -13,6 +13,7 @@ from src.dataset import load_amazon_split, load_vsfc, load_yelp, load_imdb, make
 from src.model import BaseModel, DANNModel
 from src.train import train_model, train_dann, compute_class_weights
 from src.evaluate import evaluate_model
+from src.visualize_embeddings import visualize_tsne
 from src.report_generator import generate_aggregate_report
 from src.utils import print_banner, save_results, set_seed
 
@@ -117,6 +118,16 @@ def main():
         test_loader_en = make_dataloader(test_en_t, test_en_l, test_en_d, tokenizer, batch_size=BATCH_SIZE)
         res_s3b = evaluate_model(model, test_loader_en, device, "S3b_Joint_Multilingual_IMDb")
         save_results(res_s3b, "results/results_s3b.json")
+        
+        # Visualize Multilingual Alignment
+        try:
+            vis_en_t, vis_en_l, vis_en_d = load_imdb("test", max_samples=300)
+            vis_vi_t, vis_vi_l, vis_vi_d = load_vsfc("test", max_samples=300)
+            ld_en = make_dataloader(vis_en_t, vis_en_l, vis_en_d, tokenizer, batch_size=BATCH_SIZE)
+            ld_vi = make_dataloader(vis_vi_t, vis_vi_l, vis_vi_d, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model, tokenizer, [ld_en, ld_vi], ["English (IMDb)", "Vietnamese (VSFC)"], device, "S3_Multilingual_Alignment")
+        except Exception as e:
+            print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
     # --- S4: Zero-Shot Domain Transfer (IMDb -> Amazon) ---
     if args.s in ["0", "4"]:
@@ -131,6 +142,16 @@ def main():
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=BATCH_SIZE)
         res_s4 = evaluate_model(model, test_loader, device, "S4_ZeroShot_IMDb_Amazon")
         save_results(res_s4, "results/results_s4.json")
+        
+        # Visualize Domain Gap (Before DANN)
+        try:
+            vis_src_t, vis_src_l, vis_src_d = load_imdb("test", max_samples=300)
+            vis_tgt_t, vis_tgt_l, vis_tgt_d = load_amazon_split("english", "all", "test", max_samples=300)
+            ld_src = make_dataloader(vis_src_t, vis_src_l, vis_src_d, tokenizer, batch_size=BATCH_SIZE)
+            ld_tgt = make_dataloader(vis_tgt_t, vis_tgt_l, vis_tgt_d, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model, tokenizer, [ld_src, ld_tgt], ["Source (IMDb)", "Target (Amazon)"], device, "S4_Domain_Gap_Before_DANN")
+        except Exception as e:
+            print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
     # --- S5: Pure Multidomain Learning (IMDb + Yelp -> Amazon) ---
     if args.s in ["0", "5"]:
@@ -171,6 +192,16 @@ def main():
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, tokenizer, batch_size=BATCH_SIZE)
         res_s6 = evaluate_model(model_dann, test_loader, device, "S6_DANN_Amazon")
         save_results(res_s6, "results/results_s6.json")
+        
+        # Visualize Domain Alignment (After DANN)
+        try:
+            vis_src_t, vis_src_l, vis_src_d = load_imdb("test", max_samples=300)
+            vis_tgt_t, vis_tgt_l, vis_tgt_d = load_amazon_split("english", "all", "test", max_samples=300)
+            ld_src = make_dataloader(vis_src_t, vis_src_l, vis_src_d, tokenizer, batch_size=BATCH_SIZE)
+            ld_tgt = make_dataloader(vis_tgt_t, vis_tgt_l, vis_tgt_d, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model_dann, tokenizer, [ld_src, ld_tgt], ["Source (IMDb)", "Target (Amazon)"], device, "S6_Domain_Alignment_After_DANN")
+        except Exception as e:
+            print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
     # --- S7: Supervised Target Upper Bound (Amazon -> Amazon) ---
     if args.s in ["0", "7"]:
