@@ -46,7 +46,7 @@ def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
                     ha='center', va='center', fontsize=11, color='black', xytext=(0, 5),
                     textcoords='offset points')
     plt.title("Aggregate Performance Across All Scenarios (F1-Macro)", fontsize=14)
-    plt.ylim(0, 1.0)
+    plt.ylim(0.7, 1.0) # Zoom in to see differences clearly
     plt.xticks(rotation=45)
     plt.savefig(os.path.join(plots_dir, "aggregate_performance.png"), bbox_inches='tight')
     plt.close()
