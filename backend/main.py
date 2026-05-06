@@ -100,6 +100,16 @@ def main():
         test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
         res_s2 = evaluate_model(model, test_loader_vi, device, "S2_ZeroShot_IMDb_VSFC")
         save_results(res_s2, "results/results_s2.json")
+        
+        # Visualize Language Gap
+        try:
+            vis_en_t, vis_en_l, vis_en_d, vis_en_la = load_imdb("test", max_samples=300)
+            vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la = load_vsfc("test", max_samples=300)
+            ld_en = make_dataloader(vis_en_t, vis_en_l, vis_en_d, vis_en_la, tokenizer, batch_size=BATCH_SIZE)
+            ld_vi = make_dataloader(vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model, tokenizer, [ld_en, ld_vi], ["English (IMDb)", "Vietnamese (VSFC)"], device, "S2_Language_Gap_ZeroShot")
+        except Exception as e:
+            print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
     # --- S3: Joint Multilingual Learning (IMDb + VSFC) ---
     if args.s in ["0", "3"]:
@@ -334,8 +344,14 @@ def main():
         val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
         
         model = BaseModel(config["model"]["name"])
-        weights = compute_class_weights(l_train)
-        model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+        checkpoint_path = "checkpoints/model_s8_mdl.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            weights = compute_class_weights(l_train)
+            model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+            torch.save(model.state_dict(), checkpoint_path)
         
         for domain_name, loader_func in [("Amazon", load_amazon_split), ("IMDb", load_imdb), ("Yelp", load_yelp)]:
             print(f"\n--- S8: Testing on {domain_name} ---")
@@ -363,9 +379,14 @@ def main():
             t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=500)
             train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
             
-            # Fine-tune with very low LR
-            model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
-            torch.save(model.state_dict(), "checkpoints/model_sft_s9a.pt")
+            checkpoint_path = "checkpoints/model_sft_s9a.pt"
+            if os.path.exists(checkpoint_path):
+                print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+                model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            else:
+                # Fine-tune with very low LR
+                model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+                torch.save(model.state_dict(), checkpoint_path)
             
             tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
             test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
@@ -385,8 +406,13 @@ def main():
             t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=500)
             train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
             
-            model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
-            torch.save(model.state_dict(), "checkpoints/model_sft_s9b.pt")
+            checkpoint_path = "checkpoints/model_sft_s9b.pt"
+            if os.path.exists(checkpoint_path):
+                print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+                model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            else:
+                model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+                torch.save(model.state_dict(), checkpoint_path)
             
             tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
             test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
