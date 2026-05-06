@@ -348,25 +348,50 @@ def main():
             res = evaluate_model(model, t_loader, device, f"S8_MDL_{domain_name}")
             save_results(res, f"results/results_s8_{domain_name.lower()}.json")
 
-    # --- S9: Supervised Fine-tuning (IMDb -> small Yelp) ---
-    if args.s in ["0", "9"]:
-        print_banner("Scenario 9: Supervised Fine-tuning (IMDb -> 200 Yelp)")
-        model = BaseModel(config["model"]["name"])
-        if os.path.exists("checkpoints/model_imdb.pt"):
-            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
-        else:
-            print("⚠️ Cần chạy S1a trước.")
+    # --- S9: Supervised Fine-tuning (SFT) ---
+    if args.s in ["0", "9", "9a", "9b"]:
+        # S9a: Single-Source (IMDb) -> Amazon SFT
+        if args.s in ["0", "9", "9a"]:
+            print_banner("Scenario 9a: Single-Source SFT (IMDb -> 200 Amazon)")
+            model = BaseModel(config["model"]["name"])
+            if os.path.exists("checkpoints/model_imdb.pt"):
+                model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
+            else:
+                print("⚠️ Cần chạy S1a trước.")
             
-        t_yelp, l_yelp, d_yelp, la_yelp = load_yelp("train", max_samples=200)
-        train_loader = make_dataloader(t_yelp, l_yelp, d_yelp, la_yelp, tokenizer, batch_size=8, shuffle=True)
-        
-        model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
-        torch.save(model.state_dict(), "checkpoints/model_sft_s9.pt")
-        
-        tt, tl, td, tla = load_yelp("test", max_samples=MAX_TEST)
-        test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
-        res_s9 = evaluate_model(model, test_loader, device, "S9_SFT_Yelp")
-        save_results(res_s9, "results/results_s9.json")
+            # Load 200 labeled Amazon samples
+            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=200)
+            train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
+            
+            # Fine-tune with very low LR
+            model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+            torch.save(model.state_dict(), "checkpoints/model_sft_s9a.pt")
+            
+            tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
+            test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
+            res_s9a = evaluate_model(model, test_loader, device, "S9a_SFT_IMDb_Amazon")
+            save_results(res_s9a, "results/results_s9a.json")
+
+        # S9b: Multi-Source (IMDb + Yelp) -> Amazon SFT
+        if args.s in ["0", "9", "9b"]:
+            print_banner("Scenario 9b: Multi-Source SFT (IMDb+Yelp -> 200 Amazon)")
+            model = BaseModel(config["model"]["name"])
+            if os.path.exists("checkpoints/model_s5_multidomain.pt"):
+                model.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device))
+            else:
+                print("⚠️ Cần chạy S5 trước.")
+            
+            # Load same 200 labeled Amazon samples
+            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=200)
+            train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
+            
+            model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+            torch.save(model.state_dict(), "checkpoints/model_sft_s9b.pt")
+            
+            tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
+            test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
+            res_s9b = evaluate_model(model, test_loader, device, "S9b_SFT_Multi_Amazon")
+            save_results(res_s9b, "results/results_s9b.json")
 
     print_banner("ALL EXPERIMENTS COMPLETED")
     try:
