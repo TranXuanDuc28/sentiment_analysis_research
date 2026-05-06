@@ -485,40 +485,66 @@ def main():
         except Exception as e:
             print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
-    # --- S11: Model Comparison (mBERT vs XLM-R on S6b Task) ---
-    if args.s in ["0", "11"]:
-        print_banner("Scenario 11: Model Comparison (mBERT on S6b task: IMDb+Yelp -> Amazon)")
+    # --- S11: Model Comparison (mBERT vs XLM-R) ---
+    if args.s in ["0", "11", "11a", "11b"]:
         mbert_name = "bert-base-multilingual-cased"
         tokenizer_mbert = AutoTokenizer.from_pretrained(mbert_name)
-        
-        # Load same data as S6b
-        t1, l1, d1, la1 = load_imdb("train", max_samples=MAX_TRAIN//2)
-        t2, l2, d2, la2 = load_yelp("train", max_samples=MAX_TRAIN//2)
-        s_texts, s_labels, s_d_ids, s_la_ids = t1 + t2, l1 + l2, d1 + d2, la1 + la2
-        t_texts, t_labels, t_d_ids, t_la_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN, unlabeled=True)
-        
-        s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, test_size=0.1, random_state=42)
-        s_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
-        val_loader = make_dataloader(s_val, l_val, d_val, la_val, tokenizer_mbert, batch_size=BATCH_SIZE)
-        t_loader = make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
-        
-        # Initialize mBERT DANN
-        model_mbert = DANNModel(mbert_name)
-        checkpoint_path = "checkpoints/model_dann_s11_mbert.pt"
-        
-        if os.path.exists(checkpoint_path):
-            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
-            model_mbert.load_state_dict(torch.load(checkpoint_path, map_location=device))
-        else:
-            print(f"⏳ Training mBERT DANN (this may take a while)...")
-            weights = compute_class_weights(l_train)
-            model_mbert = train_dann(model_mbert, tokenizer_mbert, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
-            torch.save(model_mbert.state_dict(), checkpoint_path)
+
+        # S11a: mBERT on S6b Task (IMDb+Yelp -> Amazon DANN)
+        if args.s in ["0", "11", "11a"]:
+            print_banner("Scenario 11a: mBERT on S6b task (IMDb+Yelp -> Amazon)")
+            t1, l1, d1, la1 = load_imdb("train", max_samples=MAX_TRAIN//2)
+            t2, l2, d2, la2 = load_yelp("train", max_samples=MAX_TRAIN//2)
+            s_texts, s_labels, s_d_ids, s_la_ids = t1 + t2, l1 + l2, d1 + d2, la1 + la2
+            t_texts, t_labels, t_d_ids, t_la_ids = load_amazon_split("english", "all", "train", max_samples=MAX_TRAIN, unlabeled=True)
             
-        test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
-        test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE)
-        res_s11 = evaluate_model(model_mbert, test_loader, device, "S11_ModelComp_mBERT")
-        save_results(res_s11, "results/results_s11.json")
+            s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, test_size=0.1, random_state=42)
+            s_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+            val_loader = make_dataloader(s_val, l_val, d_val, la_val, tokenizer_mbert, batch_size=BATCH_SIZE)
+            t_loader = make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+            
+            model_mbert = DANNModel(mbert_name)
+            checkpoint_path = "checkpoints/model_dann_s11a_mbert.pt"
+            if os.path.exists(checkpoint_path):
+                print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+                model_mbert.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            else:
+                weights = compute_class_weights(l_train)
+                model_mbert = train_dann(model_mbert, tokenizer_mbert, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+                torch.save(model_mbert.state_dict(), checkpoint_path)
+                
+            test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
+            test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE)
+            res_s11a = evaluate_model(model_mbert, test_loader, device, "S11a_ModelComp_mBERT_Amazon")
+            save_results(res_s11a, "results/results_s11a.json")
+
+        # S11b: mBERT on S10b Task (IMDb+Yelp -> VSFC DANN)
+        if args.s in ["0", "11", "11b"]:
+            print_banner("Scenario 11b: mBERT on S10b task (IMDb+Yelp -> VSFC)")
+            t1, l1, d1, la1 = load_imdb("train", max_samples=MAX_TRAIN//2)
+            t2, l2, d2, la2 = load_yelp("train", max_samples=MAX_TRAIN//2)
+            s_texts, s_labels, s_d_ids, s_la_ids = t1 + t2, l1 + l2, d1 + d2, la1 + la2
+            t_texts_vi, t_labels_vi, t_d_ids_vi, t_la_ids_vi = load_vsfc("train", max_samples=MAX_TRAIN, unlabeled=True)
+            
+            s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, test_size=0.1, random_state=42)
+            s_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+            val_loader = make_dataloader(s_val, l_val, d_val, la_val, tokenizer_mbert, batch_size=BATCH_SIZE)
+            t_loader_vi = make_dataloader(t_texts_vi, t_labels_vi, t_d_ids_vi, t_la_ids_vi, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+            
+            model_mbert_vi = DANNModel(mbert_name)
+            checkpoint_path = "checkpoints/model_dann_s11b_mbert.pt"
+            if os.path.exists(checkpoint_path):
+                print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+                model_mbert_vi.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            else:
+                weights = compute_class_weights(l_train)
+                model_mbert_vi = train_dann(model_mbert_vi, tokenizer_mbert, s_loader, t_loader_vi, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+                torch.save(model_mbert_vi.state_dict(), checkpoint_path)
+                
+            test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
+            test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer_mbert, batch_size=BATCH_SIZE)
+            res_s11b = evaluate_model(model_mbert_vi, test_loader_vi, device, "S11b_ModelComp_mBERT_VSFC")
+            save_results(res_s11b, "results/results_s11b.json")
 
     print_banner("ALL EXPERIMENTS COMPLETED")
     try:
