@@ -167,10 +167,11 @@ def load_multi_domain_amazon(domains=["books", "electronics", "apparel"], max_sa
     
     return all_texts, all_labels, all_d_ids, all_lang_ids
 
-def load_vsfc(split="test", max_samples=None):
+def load_vsfc(split="test", max_samples=None, unlabeled=False):
     csv_path = f"data/vsfc_{split}.csv"
     pq_path = f"data/vsfc_{split}.parquet"
     lang_id = LANG_MAP["vi"]
+    print(f"[Dataset] Loading VSFC | split={split} | unlabeled={unlabeled}")
     try:
         if os.path.exists(pq_path):
             df = pd.read_parquet(pq_path)
@@ -183,15 +184,21 @@ def load_vsfc(split="test", max_samples=None):
         # Filter out Neutral (1)
         df = df[~df["sentiment"].isin([1, "1", 1.0])]
         texts = df["sentence"].tolist()
-        labels = [1 if int(v) == 2 else 0 for v in df["sentiment"].tolist()]
+        
+        if unlabeled:
+            labels = [-1] * len(texts)
+        else:
+            labels = [1 if int(v) == 2 else 0 for v in df["sentiment"].tolist()]
+            
         if max_samples and len(texts) > max_samples:
             random.seed(42)
             indices = random.sample(range(len(texts)), max_samples)
             texts = [texts[i] for i in indices]
             labels = [labels[i] for i in indices]
         return texts, labels, [DOMAIN_MAP["vsfc"]] * len(texts), [lang_id] * len(texts)
-    except:
-        return ["Câu mẫu"], [2], [3], [lang_id]
+    except Exception as e:
+        print(f"Error loading VSFC: {e}")
+        return ["Câu mẫu"], [-1 if unlabeled else 2], [3], [lang_id]
 
 def load_yelp(split="test", max_samples=None, unlabeled=False):
     csv_path = f"data/yelp_{split}.csv"
