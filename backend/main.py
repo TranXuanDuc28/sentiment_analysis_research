@@ -406,6 +406,16 @@ def main():
         test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
         res_s10a = evaluate_model(model, test_loader_vi, device, "S10a_MultiCross_ZeroShot")
         save_results(res_s10a, "results/results_s10a.json")
+        
+        # Visualize Cross-lingual Alignment (Before DANN)
+        try:
+            vis_en_t, vis_en_l, vis_en_d, vis_en_la = load_imdb("test", max_samples=300)
+            vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la = load_vsfc("test", max_samples=300)
+            ld_en = make_dataloader(vis_en_t, vis_en_l, vis_en_d, vis_en_la, tokenizer, batch_size=BATCH_SIZE)
+            ld_vi = make_dataloader(vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model, tokenizer, [ld_en, ld_vi], ["English (IMDb)", "Vietnamese (VSFC)"], device, "S10a_MultiCross_Alignment_Before")
+        except Exception as e:
+            print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
     # --- S10b: Multi-source Cross-lingual DANN (IMDb + Yelp -> VSFC) ---
     if args.s in ["0", "10", "10b"]:
@@ -438,6 +448,16 @@ def main():
         test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
         res_s10b = evaluate_model(model_dann, test_loader_vi, device, "S10b_MultiCross_DANN")
         save_results(res_s10b, "results/results_s10b.json")
+        
+        # Visualize Cross-lingual Alignment (After DANN)
+        try:
+            vis_en_t, vis_en_l, vis_en_d, vis_en_la = load_imdb("test", max_samples=300)
+            vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la = load_vsfc("test", max_samples=300)
+            ld_en = make_dataloader(vis_en_t, vis_en_l, vis_en_d, vis_en_la, tokenizer, batch_size=BATCH_SIZE)
+            ld_vi = make_dataloader(vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model_dann, tokenizer, [ld_en, ld_vi], ["English (IMDb)", "Vietnamese (VSFC)"], device, "S10b_MultiCross_Alignment_After")
+        except Exception as e:
+            print(f"⚠️ Không thể tạo biểu đồ t-SNE: {e}")
 
     print_banner("ALL EXPERIMENTS COMPLETED")
     try:
