@@ -1,0 +1,236 @@
+SentXFormer: a transformer-
+enhanced hybrid deep learning 
+framework for cross-domain 
+sentiment analysis of customer 
+reviews
+Ajeet Kumar1, Kumar Abhishek1 & Ahamed Shafeeq B M2
+Cross domain sentiment analysis is still a difficult task because of vocabulary changes, context change 
+and domain specific sentiment. Conventional models are not known to generalize over unknown 
+areas leading to decreased accuracy and unreliable transfer performance. This paper presents a 
+deep learning model named SentXFormer, which is a transformer-based hybrid framework that 
+enhances the sentiment classification in heterogeneous domains. SentXFormer is based on the hybrid 
+SentiConGRU-Net architecture, which consists of CNN and GRU layers, and contextual embeddings 
+of BERT, RoBERTa, and Domain-Adaptive BERT (DABERT). A domain adaptation module based 
+on an adversarial training with a Gradient Reversal Layer (GRL) also encourages domain-invariant 
+representations to be learned. The experiments are done on 23,440 sentiment-labeled reviews across 
+three publicly available datasets including Amazon (7,550 samples), Yelp (8,450 samples), and IMDB 
+(7,440 samples). SentXFormer performed well in in-domain, reaching 98.7% (Amazon), 97.67% (Yelp) 
+and 98.8% (IMDB) accuracies. The model is stable in terms of transferability in cross-domain settings 
+with an accuracy of 91–93% on all train-test combinations. The comparative analysis with LSTM, CNN, 
+GRU, and latest transformer-based adaptation models demonstrates that SentXFormer is always 
+better than the current baselines. The findings indicate that SentXFormer is an efficient, strong and 
+scalable tool to sentiment analysis in heterogeneous and real-life customer re view contexts.
+Keywords Sentiment analysis, Cross-Domain, Transformer, Hybrid deep learning, CNN-GRU, Domain 
+adaptation, BERT, DABERT, GRL, Customer reviews
+ Sentiment analysis is a significant activity of understanding people’s opinions in the age of digital 
+communication, most prominently in the area of customer reviews and feedback1,2. This demand comes in 
+light of the rapid growth of e-commerce, social media, and online review sites; thus, organizations are relying 
+heavily on sentiment analysis to understand consumer attitudes about products and services better, and use this 
+information to improve their products and services, as well as the strategies they use to make decisions3,4. Thus, 
+when organizations can automatically extract and classify sentiment from text reviews, they can assess customer 
+satisfaction, maintain their brand reputation, and understand emerging trends5. With this being said, traditional 
+sentiment analysis systems will usually only perform in a single domain, and therefore are unable to generalize 
+effectively when used in disparate domains ranging from electronics to hospitality and entertainment6.One 
+quickly becomes acutely aware of the challenge of cross-domain applicability of models when considering the 
+dimension of variability. Texts from different domains have offered obvious linguistic variation in vocabulary, 
+context of use and sentiment expression7,8. For example, the word “charged” will suggest positive sentiment 
+when in a review about financial products, while it might signal a negative sentiment when in an electronics 
+context. Models operating on a particular domain often fail in terms of performance on a different (unseen) 
+domain due to divergence of domains, which contextualises and contributes to poor generalisation9. This 
+reiterates the benefit of having strong and scalable, personalisation-agnostic frameworks that embrace cross-
+domain sentiment analysis and are generalizable in their application across various datasets.
+1Department of Computer Science and Engineering, NIT Patna, Patna, Bihar 800005, India. 2Manipal Institute of 
+Technology, Manipal Academy of Higher Education, Manipal, India. email: ahamed.shafeeq@manipal.edu
+OPEN
+Scientific Reports  |         (2026) 16:3528 1 | https://doi.org/10.1038/s41598-025-33526-1
+www.nature.com/scientificreports
+Content courtesy of Springer Nature, terms of use apply. Rights reserved
+Within relatively short periods, DL techniques, such as Transformer-based architectures, have shaken up 
+Natural Language Processing (NLP) and brought forward new opportunities for addressing cross-domain 
+tasks10–12. Pre-trained language models (PLM) such as BERT and RoBERTa have exhibited exceptional take-up 
+of contextual semantics and enhancement of sentiment classification accuracy12; however, while these PLMs 
+offer desirable language understanding, their true applicability across domain-specific contexts is limited, unless 
+they have been formally defined for tuning or the domain shift has been adapted for13. In addition, existing 
+strategies often do not leverage the architecture correctly to represent both local and global patterns within the 
+text to represent `deep’ sentiment.To address these challenges, this study proposes SentXFormer, a Transformer-
+Enhanced Hybrid Deep Learning Framework for Cross-Domain Sentiment Analysis. The purpose of this study 
+is to build a scalable and domain-adapting high-performance sentiment classifier that can effectively deal with 
+the domain-specific gap. The SentXFormer framework is designed to consolidate the Transformers embedding 
+power, in addition to hybrid neural architectures, combining BERT/RoBERTa embeddings along with CNN-
+GRU layers to capture n-gram level features and long-range dependencies simultaneously14.
+The pipeline begins with preprocessing features, including tokenization, removal of stop-words, and 
+lemmatization to standardize the text data, followed by the extraction of contextual features using pre-trained 
+Transformer-based models. Additionally, DABERT is included in the pipeline to aid domain adaptation, fine-
+tuning the embeddings based on domain-specific corpora, therefore limiting semantic shift between different 
+domains. The feature representation is then inputted to a hybrid CNN-GRU model, which learns spatial and 
+temporal sentiment representations. A SoftMax classification layer produces binary sentiment and multi-class 
+sentiment classifications. In addition, adversarial training is employed with domain discriminator loss, which 
+aims to reduce domain divergence and allows the model to learn domain-invariant representations and increase 
+transferability15.Cross-domain sentiment analysis extends beyond traditional single-domain classification 
+by training on one domain (Amazon) and testing on another (Y elp, IMDB). The key challenge arises from 
+vocabulary mismatch, domain-specific semantics, and varying contextual sentiment expressions, which severely 
+degrade accuracy if not addressed.Lastly, SentXFormer is validated using stratified cross-validation on four data 
+sets: Amazon, Y elp, and IMDB. These validations report performance based on metrics such as (i) accuracy, 
+(ii) F1-score, and (iii) domain transferability. SentXFormer shows that it outperforms baseline models and can 
+outperform them in terms of adaptability across domains. This study presents SentXFormer, a powerful and 
+scalable approach to cross-domain sentiment analysis, which furthers the scope of transfer learning and hybrid 
+DL architectures in the representation of customer feedback. The main key contribution of this research is as 
+follows:
+• SentXFormer is a transformer-enhanced hybrid model that combines BERT/RoBERTa with SentiConG -
+RU-Net to capture local sequential patterns in sentiment expressions across several domains.
+• Domain Adaptation using Adversarial Learning, which uses a Domain Discriminator with GRL to learn Do -
+main Invariant features, solving the problem of improved generalization and cross-domain adaptation.
+• Robust Training and Validation Pipeline, which provides a robust training and validation framework to in -
+clude stratified k-fold cross-validation, ablation studies, and custom DTI to demonstrate cross-domain sen -
+timent classification.
+ Section 2 contains the literature review summarizing prior cross-domain sentiment analysis strategies, methods, 
+successes, and problems, Sect. 3 contains the proposed methodology describing the components of SentXFormer, 
+which include preprocessing, transformer embeddings, a hybrid CNN-GRU model, domain adaptation, and 
+classification, Sect. 4 contains results and discussion which provides training protocols, evaluations, ablation 
+studies, and comparative performance results, Sect. 5 contains the conclusion which summarizes the efficacy 
+and contributions to the problem of domain generalization in sentiment analysis.
+Literature survey
+Cross-domain sentiment analysis has received much attention because of the increasing demand of models that 
+generalized across a wide range of heterogeneous review websites and language settings. The initial methods 
+tended to use feature engineering and shallow classifiers but these techniques are not able to accommodate domain 
+specific vocabulary and contextual variation. Transformer-based language models have become fundamental to 
+the consideration of semantic richness with the emergence of deep learning, but have yet to be applied directly 
+to domains because of domain shift and lack of consistent sentiment expressions. A number of recent works 
+have examined domain-conscious and hybrid approaches in order to resolve these issues. Kotelnikova et al.16 
+showed that small in-domain fine-tuning with RoBERTa substantially enhance the performance of cross-
+domain performance, but the improvements are data-quality sensitive. Geethapriya and Valli17 suggested 
+CDSARFE to map domain-specific feature-opinion pairs, which is easier to interpret, yet ambiguous in polarity 
+across domains. Dima et al.18 also underlined the drawbacks of traditional NLP tools in technical settings 
+and emphasized the necessity of flexible models, but Buonocore et al.19 demonstrated better domain-specific 
+performance with localized pretraining in biomedical text. Such works emphasize the significance of domain 
+adaptation yet al.so demonstrate limitations of scalability and overall applicability. The transformer-based 
+techniques have gained more and more prominence in sentiment analysis because they learn rich contextual 
+embeddings. Pota et al.20 showed better multilingual sentiment classification accuracy of BERT with task-aware 
+preprocessing. Nonetheless, the performance decreases in the case when the target domain is significantly 
+different than the training domain. Yuan et al.23 proposed a domain-adversarial GAN structure to counteract 
+the problem of domain divergence, and Kokab et al.24 used BERT embeddings on recurrent structures but failed 
+with low-resource and code-mixed language conditions. Fu and Liu26,27 examined contrastive and discrepancy-
+based domain adaptation methods, noting that the negative transfer reduction is effective. However, they are 
+Scientific Reports  |         (2026) 16:3528 2 | https://doi.org/10.1038/s41598-025-33526-1www.nature.com/scientificreports/
+Content courtesy of Springer Nature, terms of use apply. Rights reserved
+mostly unimodal, and they fail to entirely represent both local (n-gram) and sequential dependencies. Hybrid 
+deep learning models have also been explored to improve the representational ability. Adam and Setiawan21 
+used CNN and GRU to classify Indonesian tweets, which have good performance but limited extrapolation 
+to the training field. The multi-branch CNN-GRU Vielma et al.22 proposed structures to IMDb reviews and 
+reported performance improvements but low flexibility to low-density or out-of-sample settings. Topics-based 
+adaptations like TDAN28 have demonstrated better performance in tasks that are domain specific but fail when 
+there is an irregular distribution of topic across datasets. Zhang et al.29 improved multimodal domain adaptation 
+by using adversarial learning of representations based on static GloVe embeddings, which were not contextual. 
+In general, the literature suggests that current models either have good in-domain performance or use domain 
+adaptation methods, but few of them manage to integrate contextual Transformer embeddings, hybrid local-
+sequential modeling, and adversarial domain adaptation into a single model. The identified gaps include:
+(1) inadequate management of domain specific semantic drift,
+(2) poor coverage of both world-context and fine-grained sentiment indicators, and.
+(3) insufficient robustness in cross-domain transfer to quite different domains like e-commerce, hospitality, and 
+entertainment.
+SentXFormer overcomes these drawbacks by combining hierarchical Transformer-based embedding fusion 
+(BERT, RoBERTa, DABERT) with a hybrid CNN-GRU structure and adversarial domain adaptation. This 
+combination is a direct reaction to the shortcomings of previous works as it allows both semantically rich and 
+domain-insensitive feature learning to achieve sensible cross-domain sentiment classification.
+As illustrated in Table  1, this summarizes notable contributions in cross-domain sentiment analysis by 
+focusing on hybrid models, language-specific frameworks, and transformer-based approaches. This allows for 
+rapid comparison of contributions and limitations, providing researchers with a clear picture of the techniques 
+that are being developed in the field.
+Problem statement
+While there have been advances in cross-domain sentiment analysis, there are still serious limitations in the 
+current models, including domains not scaling well, the model’s dependency on language-based resources, high 
+sensitivity to the quality of data preprocessing, poor generalization to low-resourced languages, and code-mixed 
+languages. These limitations make it difficult to create a unified, strong, and flexible sentiment classification 
+framework that is used across languages and domains.
+Proposed methodology
+This research presents SentXFormer, a hybrid framework for the cross-domain sentiment analysis of customer 
+reviews. The goal of SentXFormer is to create a robust, scalable, domain-adaptive classifier for sentiment 
+analysis. Current methods face some serious drawbacks, including poor generalization to new domains, 
+dependence on language-specific resources, and sensitivity to errors in preprocessing (bad tokenization and 
+poor number handling). SentXFormer utilizes Transformer-based contextual embeddings (i.e., BERT, RoBERTa, 
+and DABERT) and SentiConGRU-Net and adversarial domain adaptation. The uniqueness of this approach 
+Author(s) Technique Introduced Achievements Limitations
+Kotelnikova et al.16RuBERT ~ 4.6% performance gain; Sensitive to domain shifts; annotation quality dependent
+Geethapriya et al.17 CDSARFE 75.3%–88.8% accuracy;Struggles with polarity ambiguity; poor performance on 
+unknown domains
+Dima et al.18  TLP Balanced analysis; efficient in engineering texts Limited scalability; no use of deep models
+Buonocore et al.19  BioBITDomain-specific gains with multilingual corpora and repeated 
+pretrainingLimited Italian data; NMT dataset dependency; BERT-only 
+limitation
+Pota et al.20  BERT + Tweet preprocessing Improved sentiment accuracy on English & Italian tweetsLanguage variability: the model heavily depends on 
+preprocessing quality
+Adam et al.21 CN-
+GRU + SMOTE + FastTextAchieved 97.77% accuracy; enhanced robustness Label imbalance, limited dataset variety
+Vielma et al.22 Multi-branch CNN-GRU & 
+CNN-BiGRUEfficient hybrid performance in sentiment classification Not scalable to small/new datasets; interpretability issues
+Yuan et al.23  DAGANN Outperformed SOTA in fake news detection across domains Faces’ semantic variability and content evolution challenges
+Kokab et al.24  CBRNN 0.3%–0.4% gains over GloVe and Word2Vec Weak generalization to low-resource languages
+Sampath et al.25  IndicLID + IndicTrans + Xlit Outperformed Google Translate; strong multilingual support Processing tractability
+Fu et al.26  CTDAImproved performance on FDU-MTL and Amazon datasets; 
+reduced negative transfer.Restricted to unimodal text data; multimodal adaptation 
+not yet implemented.
+Liu et al.27  DA-SDSPerformed well on Amazon datasets with strong ablation 
+results.Lacks multimodal and multi-source extensions.
+Zhu et al.28  TDAN Improved domain-specific representation and classification. Less effective where topic structures are sparse or unclear.
+Zhang et al.29  DiSRANImproved cross-domain sentiment classification on 
+multimodal tasks.Limiting performance compared to BERT-based methods.
+Table 1 . Cross-Domain sentiment techniques Summary. 
+Scientific Reports  |         (2026) 16:3528 3 | https://doi.org/10.1038/s41598-025-33526-1www.nature.com/scientificreports/
+Content courtesy of Springer Nature, terms of use apply. Rights reserved
+stems from its proposed use of deep feature learning in combination with a domain-invariant representation to 
+improve sentiment prediction performance across domains. Figure  1 illustrates the proposed architecture of the 
+SentXFormer model.
+Data acquisition and collection
+The first step is to collect customer review data from different domains to gain a variety of contexts of sentiment. 
+The sites collecting data from are:
+• Amazon (E-commerce): Review categories: electronics, books and clothing.  h t t p s :  / / w  w w .  k a g g l e  . c o m / d  a t a s e  t 
+s / b i t  t l i n g m  a y e r / a  m a z o n r e v i e w s.
+• Y elp (Hospitality): Related to restaurants and service.  h t t p s :   /  / b u s i n e s  s . y e l  p . c   o m / d a   t a / r e  s o u r  c e  s / o   p e  n - d  a t a s e t /.
+• IMDB (Entertainment): Movie and series reviews. https://ai .stanford.edu/~amaas /data/sentiment/ .
+They have different datasets with sentiment information labeled (positive/negative or multi-class). The text is 
+raw.
+Class distribution of datasets
+Table  2 presents the class distributions for all three datasets used in this study, namely Amazon, Y elp, and IMDB. 
+Each dataset contains different proportions of positive, neutral, and negative reviews, reflecting the natural 
+imbalance commonly found in real-world sentiment corpora. Such imbalance can influence model performance, 
+Fig. 1 . Architecture of the proposed SentXFormer model. 
+Scientific Reports  |         (2026) 16:3528 4 | https://doi.org/10.1038/s41598-025-33526-1www.nature.com/scientificreports/
+Content courtesy of Springer Nature, terms of use apply. Rights reserved
+especially for minority classes. Therefore, reporting class distribution to ensure transparency and allows readers 
+to understand the difficulty of the classification task.The Amazon dataset contains a higher proportion of positive 
+reviews, whereas Y elp shows a more balanced split between positive and negative sentiments but includes fewer 
+neutral samples. IMDB exhibits relatively balanced positive and negative reviews with a moderate number of 
+neutral samples. These variations highlight the cross-domain differences in sentiment expression and underscore 
+the importance of domain adaptation techniques, as the model must learn to generalize across datasets with 
+different sentiment class structures.Understanding these class ratios is crucial because metrics like macro-F1 
+and micro-F1 are directly affected by class balance. The provided distribution ensures fair evaluation, supports 
+reproducibility, and clarifies advanced methods such as domain adaptation and feature fusion are necessary to 
+achieve consistent performance across multiple domains.
+Data preprocessing
+Before providing raw customer reviews to the SentXFormer model, it is important to clean and normalize the 
+textual content. Text preprocessing serves as the initial step of deliverable input that is consistent and conveys 
+semantic meaning across various domains. User-generated text on review sites such as Amazon, Y elp, and IMDB 
+is characterized as being both messy and unstructured. Text preprocessing eliminate inconsistency and makes 
+the text consistent to facilitate downstream processing.
+Figure 2 shows the structure of data pre-processing. User reviews often contain non-linguistic elements 
+(HTML tags, emojis, special characters, extra punctuation) that add semantic noise. A cleaning function fclean
+removes these, producing cleaned reviews: Eqs. ( 1 and 2):
+ Rclean
+i =fclean (Ri) (1)
+ fclean (Ri)=Ri\{Nhtml,Nemoji ,Nspecial } (2)
+where Nhtml,Nemoji ,Nspecial  are the sets of HTML tags, emojis, and special characters. So, the model 
+learn sentiment from what is presumably the textual content of a user-generated review, limiting the ability 
+for distractions. Following noise removal, the cleaned text is split into smaller units (words, sub-words, or 
+characters) using tokenizationas represented in Eqs. ( 3) and ( 4):
+ Ti=ftoken(
+Rclean
+i)
+ (3)
+ Ti={t1,t2,t3,... ,t n} (4)
+Fig. 2 . Structure of the data pre-processing. Dataset Positive Neutral Negative Total
+Amazon 3,450 1,120 2,980 7,550
+Ye lp 4,210 900 3,340 8,450
+IMDB 2,980 1,450 3,010 7,440
+Table 2 . Sentiment class distribution for Amazon, Y elp, and IMDB datasets. 
+Scientific Reports  |         (2026) 16:3528 5 | https://doi.org/10.1038/s41598-025-33526-1www.nature.com/scientificreports/
+Content courtesy of Springer Nature, terms of use apply. Rights reserved
