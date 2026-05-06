@@ -76,7 +76,14 @@ def train_model(model, tokenizer, train_loader, val_loader=None, num_epochs=5, l
 def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, num_epochs=3, lr=2e-5, device="cpu", class_weights=None):
     from src.utils import EarlyStopping
     model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    # Split learning rates: Encoder gets small LR, Heads get larger LR (10x)
+    optimizer_grouped_parameters = [
+        {"params": model.encoder.parameters(), "lr": lr},
+        {"params": model.sentiment_head.parameters(), "lr": lr * 10},
+        {"params": model.domain_head.parameters(), "lr": lr * 10}
+    ]
+    optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
+    
     s_criterion = nn.CrossEntropyLoss(weight=class_weights.to(device) if class_weights is not None else None)
     d_criterion = nn.BCEWithLogitsLoss()
     early_stopping = EarlyStopping(patience=3)
@@ -94,9 +101,9 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
         
         pbar = tqdm(source_loader, desc=f"DANN Epoch {epoch}")
         for s_batch in pbar:
-            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 0.1 for Transformers
+            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 1.0 for stronger domain alignment
             p = float(current_step) / total_steps
-            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 0.1
+            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 1.0
             
             # 2. Source batch
             s_input_ids = s_batch["input_ids"].to(device)
@@ -126,13 +133,13 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             t_class_out, t_domain_out = model(t_input_ids, t_attention_mask, alpha=lambd)
             loss_t_domain = d_criterion(t_domain_out, t_domain_labels)
             
-            # 🚀 TUYỆT CHIÊU: Target Entropy Minimization (Chống sụp đổ cấu trúc cảm xúc)
-            # Ép Target phải tự chia làm 2 cụm (Khen/Chê) rõ ràng, không được gom thành 1 cục
-            t_probs = torch.softmax(t_class_out, dim=1)
-            loss_t_entropy = -torch.mean(torch.sum(t_probs * torch.log(t_probs + 1e-8), dim=1))
+            # 🚀 TUYỆT CHIÊU: Target Entropy Minimization 
+            # ĐÃ ĐƯỢC TẮT (Comment lại) ĐỂ TRÁNH CONFIRMATION BIAS LÀM VỠ KHÔNG GIAN CỦA XLM-R
+            # t_probs = torch.softmax(t_class_out, dim=1)
+            # loss_t_entropy = -torch.mean(torch.sum(t_probs * torch.log(t_probs + 1e-8), dim=1))
             
-            # Total Loss (Kết hợp DANN và Entropy)
-            total_loss = loss_s_class + (loss_s_domain + loss_t_domain) + 0.1 * loss_t_entropy
+            # Total Loss (Chỉ dùng DANN thuần túy)
+            total_loss = loss_s_class + (loss_s_domain + loss_t_domain)
             total_loss.backward()
             
             # Gradient Clipping to stabilize Adversarial Training
