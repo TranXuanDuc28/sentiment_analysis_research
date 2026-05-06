@@ -393,6 +393,52 @@ def main():
             res_s9b = evaluate_model(model, test_loader, device, "S9b_SFT_Multi_Amazon")
             save_results(res_s9b, "results/results_s9b.json")
 
+    # --- S10a: Multi-source Cross-lingual Transfer (IMDb + Yelp -> VSFC) ---
+    if args.s in ["0", "10", "10a"]:
+        print_banner("Scenario 10a: Multi-source Cross-lingual Transfer (IMDb+Yelp -> VSFC)")
+        model = BaseModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_s5_multidomain.pt"):
+            model.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device))
+        else:
+            print("⚠️ Cần chạy S5 trước.")
+        
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        res_s10a = evaluate_model(model, test_loader_vi, device, "S10a_MultiCross_ZeroShot")
+        save_results(res_s10a, "results/results_s10a.json")
+
+    # --- S10b: Multi-source Cross-lingual DANN (IMDb + Yelp -> VSFC) ---
+    if args.s in ["0", "10", "10b"]:
+        print_banner("Scenario 10b: Multi-source Cross-lingual DANN (IMDb+Yelp -> VSFC)")
+        t1, l1, d1, la1 = load_imdb("train", max_samples=MAX_TRAIN//2)
+        t2, l2, d2, la2 = load_yelp("train", max_samples=MAX_TRAIN//2)
+        s_texts, s_labels, s_d_ids, s_la_ids = t1 + t2, l1 + l2, d1 + d2, la1 + la2
+        # Target data (VSFC) unlabeled
+        t_texts, t_labels, t_d_ids, t_la_ids = load_vsfc("train", max_samples=MAX_TRAIN, unlabeled=True)
+        
+        s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, test_size=0.1, random_state=42)
+        s_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+        val_loader = make_dataloader(s_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
+        t_loader = make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+        
+        model_dann = DANNModel(config["model"]["name"])
+        checkpoint_path = "checkpoints/model_dann_s10b.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model_dann.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            if os.path.exists("checkpoints/model_s5_multidomain.pt"):
+                model_dann.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device), strict=False)
+            
+            weights = compute_class_weights(l_train)
+            model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+            torch.save(model_dann.state_dict(), checkpoint_path)
+        
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        res_s10b = evaluate_model(model_dann, test_loader_vi, device, "S10b_MultiCross_DANN")
+        save_results(res_s10b, "results/results_s10b.json")
+
     print_banner("ALL EXPERIMENTS COMPLETED")
     try:
         generate_aggregate_report()
