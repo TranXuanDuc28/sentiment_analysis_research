@@ -352,7 +352,7 @@ def main():
     if args.s in ["0", "9", "9a", "9b"]:
         # S9a: Single-Source (IMDb) -> Amazon SFT
         if args.s in ["0", "9", "9a"]:
-            print_banner("Scenario 9a: Single-Source SFT (IMDb -> 200 Amazon)")
+            print_banner("Scenario 9a: Single-Source SFT (IMDb -> 500 Amazon)")
             model = BaseModel(config["model"]["name"])
             if os.path.exists("checkpoints/model_imdb.pt"):
                 model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
@@ -360,7 +360,7 @@ def main():
                 print("⚠️ Cần chạy S1a trước.")
             
             # Load 200 labeled Amazon samples
-            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=200)
+            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=500)
             train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
             
             # Fine-tune with very low LR
@@ -374,15 +374,15 @@ def main():
 
         # S9b: Multi-Source (IMDb + Yelp) -> Amazon SFT
         if args.s in ["0", "9", "9b"]:
-            print_banner("Scenario 9b: Multi-Source SFT (IMDb+Yelp -> 200 Amazon)")
+            print_banner("Scenario 9b: Multi-Source SFT (IMDb+Yelp -> 500 Amazon)")
             model = BaseModel(config["model"]["name"])
             if os.path.exists("checkpoints/model_s5_multidomain.pt"):
                 model.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device))
             else:
                 print("⚠️ Cần chạy S5 trước.")
             
-            # Load same 200 labeled Amazon samples
-            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=200)
+            # Load same 500 labeled Amazon samples
+            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=500)
             train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
             
             model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
