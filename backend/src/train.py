@@ -101,17 +101,16 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
         
         pbar = tqdm(source_loader, desc=f"DANN Epoch {epoch}")
         for s_batch in pbar:
-            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 1.0 for stronger domain alignment
+            # 1. Prepare Lambda (p increases from 0 to 1), scale max to 0.1 for Transformers stability
             p = float(current_step) / total_steps
-            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 1.0
+            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 0.1
             
-            # 2. Source batch
+            # ... (Source and Target preparation remain same) ...
             s_input_ids = s_batch["input_ids"].to(device)
             s_attention_mask = s_batch["attention_mask"].to(device)
             s_labels = s_batch["labels"].to(device)
-            s_domain_labels = torch.zeros(s_input_ids.size(0), 1, dtype=torch.float).to(device) # Source = 0
+            s_domain_labels = torch.zeros(s_input_ids.size(0), 1, dtype=torch.float).to(device)
             
-            # 3. Target batch (unlabeled)
             try:
                 t_batch = next(target_iter)
             except StopIteration:
@@ -120,7 +119,7 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             
             t_input_ids = t_batch["input_ids"].to(device)
             t_attention_mask = t_batch["attention_mask"].to(device)
-            t_domain_labels = torch.ones(t_input_ids.size(0), 1, dtype=torch.float).to(device) # Target = 1
+            t_domain_labels = torch.ones(t_input_ids.size(0), 1, dtype=torch.float).to(device)
             
             optimizer.zero_grad()
             
@@ -133,13 +132,8 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             t_class_out, t_domain_out = model(t_input_ids, t_attention_mask, alpha=lambd)
             loss_t_domain = d_criterion(t_domain_out, t_domain_labels)
             
-            # 🚀 TUYỆT CHIÊU: Target Entropy Minimization 
-            # ĐÃ ĐƯỢC TẮT (Comment lại) ĐỂ TRÁNH CONFIRMATION BIAS LÀM VỠ KHÔNG GIAN CỦA XLM-R
-            # t_probs = torch.softmax(t_class_out, dim=1)
-            # loss_t_entropy = -torch.mean(torch.sum(t_probs * torch.log(t_probs + 1e-8), dim=1))
-            
-            # Total Loss (Chỉ dùng DANN thuần túy)
-            total_loss = loss_s_class + (loss_s_domain + loss_t_domain)
+            # Total Loss (Thêm trọng số 0.1 cho Domain Loss để không đè bẹp Sentiment Loss)
+            total_loss = loss_s_class + 0.1 * (loss_s_domain + loss_t_domain)
             total_loss.backward()
             
             # Gradient Clipping to stabilize Adversarial Training
