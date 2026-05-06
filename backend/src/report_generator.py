@@ -14,10 +14,13 @@ def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
     for filename in os.listdir(results_dir):
         if filename.endswith(".json"):
             path = os.path.join(results_dir, filename)
-            with open(path, "r") as f:
-                data = json.load(f)
-                name = filename.replace("results_", "").replace(".json", "").upper()
-                results[name] = data
+            try:
+                with open(path, "r") as f:
+                    data = json.load(f)
+                    name = filename.replace("results_", "").replace(".json", "").upper()
+                    results[name] = data
+            except:
+                continue
 
     if not results:
         print("⚠️ Không tìm thấy file kết quả nào trong thư mục results.")
@@ -44,30 +47,46 @@ def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
                     textcoords='offset points')
     plt.title("Aggregate Performance Across All Scenarios (F1-Macro)", fontsize=14)
     plt.ylim(0, 1.0)
+    plt.xticks(rotation=45)
     plt.savefig(os.path.join(plots_dir, "aggregate_performance.png"), bbox_inches='tight')
     plt.close()
 
-    # 2. BIỂU ĐỒ SO SÁNH: Domain Adaptation (S4a vs S4b)
-    # Lưu ý: S4a là baseline, S4b là DANN (thường lưu chung trong kết quả S4)
-    # Ở đây chúng ta giả định có S4A và S4B trong results
-    if "S4A" in results and "S4" in results:
-        comp_df = df[df["Scenario"].isin(["S4A", "S4"])]
-        plt.figure(figsize=(8, 6))
-        sns.barplot(x="Scenario", y="F1-Macro", data=comp_df, palette="Set2", hue=None)
-        plt.title("Domain Adaptation Effect: Baseline vs DANN")
-        plt.savefig(os.path.join(plots_dir, "adaptation_effect.png"))
-        plt.close()
+    # 2. BẢNG SO SÁNH TỔNG HỢP (Comparison Table)
+    print("\n" + "="*80)
+    print(f"{'Scenario':<30} | {'Accuracy':<12} | {'F1-Macro':<12}")
+    print("-" * 80)
+    for _, row in df.iterrows():
+        print(f"{row['Scenario']:<30} | {row['Accuracy']:<12.4f} | {row['F1-Macro']:<12.4f}")
+    print("="*80)
 
-    # 3. BIỂU ĐỒ SO SÁNH: Cross-lingual Gap (S1B vs S2)
-    if "S1B" in results and "S2" in results:
-        comp_df = df[df["Scenario"].isin(["S1B", "S2"])]
-        plt.figure(figsize=(8, 6))
-        sns.barplot(x="Scenario", y="F1-Macro", data=comp_df, palette="coolwarm")
-        plt.title("Transfer Gap: VI-Monolingual vs EN-ZeroShot")
-        plt.savefig(os.path.join(plots_dir, "transfer_gap.png"))
-        plt.close()
+    # 3. HEATMAP: Train Domain vs Test Domain (Cross-domain Analysis)
+    # Mapping manual cho các kịch bản cross-domain điển hình
+    # S1A (IMDb->IMDb), S4 (IMDb->Amz), S8_MDL_YELP (Multi->Yelp), v.v.
+    domains = ["IMDb", "Yelp", "Amazon", "VSFC"]
+    heatmap_data = pd.DataFrame(index=domains, columns=domains, dtype=float)
 
-    print(f"✅ Đã tạo xong tất cả báo cáo đồ thị tại: {plots_dir}")
+    # Fill heatmap from results if they exist
+    # Monolingual
+    if "S1A" in results: heatmap_data.loc["IMDb", "IMDb"] = results["S1A"]["f1_macro"]
+    if "S1B" in results: heatmap_data.loc["VSFC", "VSFC"] = results["S1B"]["f1_macro"]
+    if "S7" in results: heatmap_data.loc["Amazon", "Amazon"] = results["S7"]["f1_macro"]
+    
+    # Transfer
+    if "S4" in results: heatmap_data.loc["IMDb", "Amazon"] = results["S4"]["f1_macro"]
+    if "S2" in results: heatmap_data.loc["IMDb", "VSFC"] = results["S2"]["f1_macro"]
+    
+    # DANN
+    if "S6A" in results: heatmap_data.loc["IMDb(DANN)", "Amazon"] = results["S6A"]["f1_macro"]
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(heatmap_data, annot=True, cmap="YlGnBu", fmt=".3f")
+    plt.title("Domain Adaptation Heatmap (F1-Macro)")
+    plt.xlabel("Test Domain")
+    plt.ylabel("Train Domain")
+    plt.savefig(os.path.join(plots_dir, "domain_heatmap.png"), bbox_inches='tight')
+    plt.close()
+
+    print(f"✅ Đã tạo xong báo cáo tổng hợp tại: {plots_dir}")
 
 if __name__ == "__main__":
     generate_aggregate_report()

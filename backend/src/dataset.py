@@ -23,6 +23,13 @@ DOMAIN_MAP = {
     "imdb": 5
 }
 
+LANG_MAP = {
+    "en": 0,
+    "english": 0,
+    "vi": 1,
+    "vietnamese": 1
+}
+
 def rating_to_sentiment_amazon(rating: int) -> int:
     # Not used anymore since we map inline, but keeping signature if imported elsewhere
     return 0 if rating <= 2 else 1
@@ -36,10 +43,11 @@ def word_segment_vietnamese(texts):
         return texts
 
 class SentimentDataset(Dataset):
-    def __init__(self, texts, labels, domain_ids, tokenizer, max_length=128):
+    def __init__(self, texts, labels, domain_ids, language_ids, tokenizer, max_length=128):
         self.texts = texts
         self.labels = labels
         self.domain_ids = domain_ids
+        self.language_ids = language_ids
         self.tokenizer = tokenizer
         self.max_length = max_length
 
@@ -54,11 +62,14 @@ class SentimentDataset(Dataset):
             "input_ids": encoding["input_ids"].squeeze(0),
             "attention_mask": encoding["attention_mask"].squeeze(0),
             "labels": torch.tensor(int(self.labels[idx]), dtype=torch.long),
-            "domain_ids": torch.tensor(int(self.domain_ids[idx]), dtype=torch.long)
+            "domain_ids": torch.tensor(int(self.domain_ids[idx]), dtype=torch.long),
+            "language_ids": torch.tensor(int(self.language_ids[idx]), dtype=torch.long)
         }
 
 def load_amazon_split(language, domain, split="train", max_samples=None, unlabeled=False):
     lang_code = "en" if language == "english" else "vi"
+    lang_id = LANG_MAP.get(lang_code, 0)
+    
     # Kiểm tra linh hoạt các đường dẫn file
     possible_paths = [
         f"data/amazon_{lang_code}_{split}.parquet",
@@ -135,29 +146,31 @@ def load_amazon_split(language, domain, split="train", max_samples=None, unlabel
             texts = [texts[i] for i in indices]
             labels = [labels[i] for i in indices]
             
-        return texts, labels, [DOMAIN_MAP.get(domain.lower(), 0)] * len(texts)
+        return texts, labels, [DOMAIN_MAP.get(domain.lower(), 0)] * len(texts), [lang_id] * len(texts)
     except Exception as e:
         print(f"[Dataset] Error: {e}")
         # Fallback 3 nhãn
         texts = ["Tệ"]*10 + ["Ổn"]*10 + ["Tốt"]*10
-        return texts, [0]*10 + [1]*10 + [2]*10, [0]*30
+        return texts, [0]*10 + [1]*10 + [2]*10, [0]*30, [1]*30
 
 def load_multi_domain_amazon(domains=["books", "electronics", "apparel"], max_samples=1000):
     """Gộp nhiều domain Amazon lại với nhau."""
-    all_texts, all_labels, all_d_ids = [], [], []
+    all_texts, all_labels, all_d_ids, all_lang_ids = [], [], [], []
     samples_per_domain = max_samples // len(domains)
     
     for d in domains:
-        t, l, d_ids = load_amazon_split("english", d, "train", max_samples=samples_per_domain)
+        t, l, d_ids, lang_ids = load_amazon_split("english", d, "train", max_samples=samples_per_domain)
         all_texts.extend(t)
         all_labels.extend(l)
         all_d_ids.extend(d_ids)
+        all_lang_ids.extend(lang_ids)
     
-    return all_texts, all_labels, all_d_ids
+    return all_texts, all_labels, all_d_ids, all_lang_ids
 
 def load_vsfc(split="test", max_samples=None):
     csv_path = f"data/vsfc_{split}.csv"
     pq_path = f"data/vsfc_{split}.parquet"
+    lang_id = LANG_MAP["vi"]
     try:
         if os.path.exists(pq_path):
             df = pd.read_parquet(pq_path)
@@ -176,12 +189,13 @@ def load_vsfc(split="test", max_samples=None):
             indices = random.sample(range(len(texts)), max_samples)
             texts = [texts[i] for i in indices]
             labels = [labels[i] for i in indices]
-        return texts, labels, [DOMAIN_MAP["vsfc"]] * len(texts)
+        return texts, labels, [DOMAIN_MAP["vsfc"]] * len(texts), [lang_id] * len(texts)
     except:
-        return ["Câu mẫu"], [2], [3]
+        return ["Câu mẫu"], [2], [3], [lang_id]
 
 def load_yelp(split="test", max_samples=None, unlabeled=False):
     csv_path = f"data/yelp_{split}.csv"
+    lang_id = LANG_MAP["en"]
     print(f"[Dataset] Loading Yelp | split={split} | unlabeled={unlabeled}")
     try:
         df = pd.read_csv(csv_path)
@@ -198,13 +212,14 @@ def load_yelp(split="test", max_samples=None, unlabeled=False):
             indices = random.sample(range(len(texts)), max_samples)
             texts = [texts[i] for i in indices]
             labels = [labels[i] for i in indices]
-        return texts, labels, [DOMAIN_MAP["yelp"]] * len(texts)
+        return texts, labels, [DOMAIN_MAP["yelp"]] * len(texts), [lang_id] * len(texts)
     except Exception as e:
         print(f"Error loading Yelp: {e}")
-        return ["Yelp review"], [-1 if unlabeled else 2], [4]
+        return ["Yelp review"], [-1 if unlabeled else 2], [4], [lang_id]
 
 def load_imdb(split="test", max_samples=None, unlabeled=False):
     csv_path = f"data/imdb_{split}.csv"
+    lang_id = LANG_MAP["en"]
     print(f"[Dataset] Loading IMDB | split={split} | unlabeled={unlabeled}")
     try:
         df = pd.read_csv(csv_path)
@@ -221,11 +236,11 @@ def load_imdb(split="test", max_samples=None, unlabeled=False):
             indices = random.sample(range(len(texts)), max_samples)
             texts = [texts[i] for i in indices]
             labels = [labels[i] for i in indices]
-        return texts, labels, [DOMAIN_MAP["imdb"]] * len(texts)
+        return texts, labels, [DOMAIN_MAP["imdb"]] * len(texts), [lang_id] * len(texts)
     except Exception as e:
         print(f"Error loading IMDB: {e}")
-        return ["IMDB review"], [-1 if unlabeled else 2], [5]
+        return ["IMDB review"], [-1 if unlabeled else 2], [5], [lang_id]
 
-def make_dataloader(texts, labels, domain_ids, tokenizer, batch_size=32, max_length=128, shuffle=False):
-    dataset = SentimentDataset(texts, labels, domain_ids, tokenizer, max_length)
+def make_dataloader(texts, labels, domain_ids, language_ids, tokenizer, batch_size=32, max_length=128, shuffle=False):
+    dataset = SentimentDataset(texts, labels, domain_ids, language_ids, tokenizer, max_length)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
