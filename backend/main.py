@@ -49,9 +49,14 @@ def main():
         val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
         
         model = BaseModel(config["model"]["name"])
-        weights = compute_class_weights(l_train)
-        model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
-        torch.save(model.state_dict(), "checkpoints/model_imdb.pt")
+        checkpoint_path = "checkpoints/model_imdb.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            weights = compute_class_weights(l_train)
+            model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+            torch.save(model.state_dict(), checkpoint_path)
         
         test_texts, test_labels, test_d_ids, test_la_ids = load_imdb("test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
@@ -68,8 +73,14 @@ def main():
         val_loader_vi = make_dataloader(tv_val, lv_val, dv_val, lav_val, tokenizer, batch_size=BATCH_SIZE)
         
         model_vi = BaseModel(config["model"]["name"])
-        weights_vi = compute_class_weights(lv_train)
-        model_vi = train_model(model_vi, tokenizer, train_loader_vi, val_loader=val_loader_vi, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights_vi)
+        checkpoint_path = "checkpoints/model_vsfc.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model_vi.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            weights_vi = compute_class_weights(lv_train)
+            model_vi = train_model(model_vi, tokenizer, train_loader_vi, val_loader=val_loader_vi, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights_vi)
+            torch.save(model_vi.state_dict(), checkpoint_path)
         
         test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
         test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
@@ -102,9 +113,14 @@ def main():
         val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
         
         model = BaseModel(config["model"]["name"])
-        weights = compute_class_weights(l_train)
-        model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
-        torch.save(model.state_dict(), "checkpoints/model_s3_joint.pt")
+        checkpoint_path = "checkpoints/model_s3_joint.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            weights = compute_class_weights(l_train)
+            model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+            torch.save(model.state_dict(), checkpoint_path)
         
         # Test 3a: On Vietnamese
         print("\n--- S3a: Testing on Vietnamese (VSFC) ---")
@@ -166,9 +182,14 @@ def main():
         val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
         
         model = BaseModel(config["model"]["name"])
-        weights = compute_class_weights(l_train)
-        model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
-        torch.save(model.state_dict(), "checkpoints/model_s5_multidomain.pt")
+        checkpoint_path = "checkpoints/model_s5_multidomain.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            weights = compute_class_weights(l_train)
+            model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+            torch.save(model.state_dict(), checkpoint_path)
         
         test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
@@ -201,15 +222,18 @@ def main():
         t_loader = make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         
         model_dann = DANNModel(config["model"]["name"])
-        if os.path.exists("checkpoints/model_imdb.pt"):
-            print("🚀 Nạp não bộ đã học từ IMDb vào DANN để tránh sụp đổ đối nghịch...")
-            model_dann.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device), strict=False)
+        checkpoint_path = "checkpoints/model_dann_s6a.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model_dann.load_state_dict(torch.load(checkpoint_path, map_location=device))
         else:
-            print("⚠️ Cảnh báo: Train DANN từ đầu rất dễ bị sập (Mode Collapse). Hãy chạy S1a trước.")
+            if os.path.exists("checkpoints/model_imdb.pt"):
+                print("🚀 Nạp não bộ đã học từ IMDb vào DANN để tránh sụp đổ đối nghịch...")
+                model_dann.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device), strict=False)
             
-        weights = compute_class_weights(l_train)
-        # Giảm Learning Rate xuống 10 lần vì mô hình đã được pre-train
-        model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+            weights = compute_class_weights(l_train)
+            model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+            torch.save(model_dann.state_dict(), checkpoint_path)
         
         test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
@@ -241,16 +265,18 @@ def main():
         t_loader = make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         
         model_dann = DANNModel(config["model"]["name"])
-        if os.path.exists("checkpoints/model_s5_multidomain.pt"):
-            print("🚀 Nạp não bộ Multi-domain (IMDb+Yelp) vào DANN để tránh sụp đổ đối nghịch...")
-            model_dann.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device), strict=False)
-        elif os.path.exists("checkpoints/model_imdb.pt"):
-            print("🚀 Nạp não bộ IMDb vào DANN tạm thời...")
-            model_dann.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device), strict=False)
+        checkpoint_path = "checkpoints/model_dann_s6b.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model_dann.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            if os.path.exists("checkpoints/model_s5_multidomain.pt"):
+                print("🚀 Nạp não bộ Multi-domain (IMDb+Yelp) vào DANN...")
+                model_dann.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device), strict=False)
             
-        weights = compute_class_weights(l_train)
-        # Giảm Learning Rate xuống 10 lần vì mô hình đã được pre-train
-        model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+            weights = compute_class_weights(l_train)
+            model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+            torch.save(model_dann.state_dict(), checkpoint_path)
         
         test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
@@ -280,8 +306,14 @@ def main():
         val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
         
         model = BaseModel(config["model"]["name"])
-        weights = compute_class_weights(l_train)
-        model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+        checkpoint_path = "checkpoints/model_upper_bound_s7.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            weights = compute_class_weights(l_train)
+            model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+            torch.save(model.state_dict(), checkpoint_path)
         
         test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=MAX_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
@@ -329,6 +361,7 @@ def main():
         train_loader = make_dataloader(t_yelp, l_yelp, d_yelp, la_yelp, tokenizer, batch_size=8, shuffle=True)
         
         model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+        torch.save(model.state_dict(), "checkpoints/model_sft_s9.pt")
         
         tt, tl, td, tla = load_yelp("test", max_samples=MAX_TEST)
         test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
