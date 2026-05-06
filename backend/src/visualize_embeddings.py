@@ -31,7 +31,7 @@ def visualize_tsne(model, tokenizer, dataloaders, names, device="cuda", title="t
                 all_features.append(pooled.cpu().numpy())
                 all_groups.extend([name] * input_ids.size(0))
                 count += input_ids.size(0)
-                if count >= 300: break # Giới hạn số điểm để vẽ nhanh và đẹp
+                if count >= 500: break # Increased for better contrast
 
     features = np.concatenate(all_features, axis=0)
     
@@ -41,7 +41,7 @@ def visualize_tsne(model, tokenizer, dataloaders, names, device="cuda", title="t
 
     # Plot
     plt.figure(figsize=(10, 7))
-    sns.scatterplot(x=reduced[:, 0], y=reduced[:, 1], hue=all_groups, palette="Set1", alpha=0.7)
+    sns.scatterplot(x=reduced[:, 0], y=reduced[:, 1], hue=all_groups, palette="Set1", alpha=0.5)
     plt.title(title)
     plt.grid(True, alpha=0.3)
     

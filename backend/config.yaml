@@ -14,7 +14,7 @@ training:
   dann_alpha: 1.0
 
 scenarios:
-  max_samples_train: 10000  # Giảm xuống 3000 để train nhanh hơn
+  max_samples_train: 1000  # Reduced to 1000 for better contrast between techniques (Low-resource setup)
   max_samples_test: 1000
   
   # Bật/Tắt các kịch bản tại đây
@@ -24,3 +24,8 @@ scenarios:
   run_s4: true   # DANN Adaptation (BẮT BUỘC)
   run_s5: true   # Cross-lingual (QUAN TRỌNG)
   run_s6: true  # Multilingual (Có thể bỏ qua)
+  run_s7: true   # DANN for Low-Resource (QUAN TRỌNG)
+  run_s8: true   # Cross-Lingual Adaptation (BẮT BUỘC)
+  run_s9: true   # Cross-Lingual + Multilingual (QUAN TRỌNG)
+  run_s10: true  # S10a & S10b (Multilingual Cross-Domain)
+  run_s11: true  # Model Comparison (mBERT vs XLM-R)
