@@ -73,13 +73,17 @@ class DANNModel(nn.Module):
         else:
             return s_logits, None
 
-class AdvancedMultiTaskModel(nn.Module):
-    """Mô hình Multi-task Learning với 3 tác vụ: Sentiment, Domain, và Language"""
-    def __init__(self, model_name="xlm-roberta-base", num_labels=2, num_domains=6, num_languages=2):
-        super(AdvancedMultiTaskModel, self).__init__()
+class UnifiedFrameworkModel(nn.Module):
+    """
+    Mô hình Hợp nhất (Unified Framework) cho kịch bản S7.
+    Kết hợp: Sentiment Classification + Domain Adaptation + Language Alignment.
+    Sử dụng Gradient Reversal Layer (GRL) để xóa bỏ ranh giới miền và ngôn ngữ.
+    """
+    def __init__(self, model_name="xlm-roberta-base", num_labels=3, num_domains=5, num_languages=2):
+        super(UnifiedFrameworkModel, self).__init__()
         self.encoder = AutoModel.from_pretrained(model_name)
         
-        # Sentiment Head
+        # Sentiment Head (Task chính)
         self.sentiment_head = nn.Sequential(
             nn.Linear(self.encoder.config.hidden_size, 256),
             nn.LayerNorm(256),
@@ -88,7 +92,7 @@ class AdvancedMultiTaskModel(nn.Module):
             nn.Linear(256, num_labels)
         )
         
-        # Domain Head
+        # Domain Head (Cho Domain Adaptation - GRL)
         self.domain_head = nn.Sequential(
             nn.Linear(self.encoder.config.hidden_size, 256),
             nn.LayerNorm(256),
@@ -97,7 +101,7 @@ class AdvancedMultiTaskModel(nn.Module):
             nn.Linear(256, num_domains)
         )
         
-        # Language Head
+        # Language Head (Cho Language Alignment - GRL)
         self.language_head = nn.Sequential(
             nn.Linear(self.encoder.config.hidden_size, 256),
             nn.LayerNorm(256),
@@ -113,14 +117,14 @@ class AdvancedMultiTaskModel(nn.Module):
         # Sentiment
         s_logits = self.sentiment_head(pooled_output)
         
-        # Domain
+        # Domain (với GRL nếu alpha_domain được cung cấp)
         if alpha_domain is not None:
             reverse_feature_domain = GradientReversalFunction.apply(pooled_output, alpha_domain)
             d_logits = self.domain_head(reverse_feature_domain)
         else:
             d_logits = self.domain_head(pooled_output)
             
-        # Language
+        # Language (với GRL nếu alpha_language được cung cấp)
         if alpha_language is not None:
             reverse_feature_lang = GradientReversalFunction.apply(pooled_output, alpha_language)
             l_logits = self.language_head(reverse_feature_lang)

@@ -1,8 +1,9 @@
-# Configuration Optimized for Time and Accuracy
+# Configuration Optimized for Research Narrative
+# Phase 1: Multidomain | Phase 2: Multilingual | Phase 3: Combined
 
 model:
   name: "xlm-roberta-base"
-  vi_baseline: "vinai/phobert-base"
+  mbert: "bert-base-multilingual-cased"
   num_labels: 3
   num_domains: 5
 
@@ -18,26 +19,18 @@ scenarios:
   base_samples_test: 2000   
   few_shot_samples: 500     
   
-  # --- CLUSTER 1: BASELINES & UPPER BOUNDS ---
-  run_s1: true   # S1a (IMDb), S1b (VSFC)
-  run_s7: true   # S7 (Amazon Upper Bound)
+  # --- PHASE 1: MULTIDOMAIN ANALYSIS ---
+  run_s1: true   # S1 (Transfer Learning: IMDb -> Amazon)
+  run_s2: true   # S2 (Domain Adaptation: IMDb+Yelp -> Amazon)
+  run_s3: true   # S3 (Multi-task Learning: Sentiment + Domain)
 
-  # --- CLUSTER 2: MULTIDOMAIN ANALYSIS ---
-  run_s4: true   # S4 (Zero-shot Domain)
-  run_s5: true   # S5 (Pure Multi-source)
-  run_s9: true   # S9a, S9b (Few-shot Fine-tuning)
-  run_s6: true   # S6a, S6b (DANN Domain Adaptation)
-  run_s8: true   # S8 (Unified Multidomain)
+  # --- PHASE 2: MULTILINGUAL ANALYSIS ---
+  run_s4: true   # S4 (Zero-shot Cross-lingual: EN -> VI)
+  run_s5: true   # S5 (Few-shot Fine-tuning: VI)
+  run_s6: true   # S6 (Translation-Based Baseline)
 
-  # --- CLUSTER 3: MULTILINGUAL ANALYSIS ---
-  run_s2: true   # S2 (Zero-shot Multilingual)
-  run_s13: true  # S13 (Translation Baseline)
-  run_s3: true   # S3 (Joint Multilingual)
-  run_s12: true  # S12 (Cross-lingual Fine-tuning)
+  # --- PHASE 3: COMBINED FRAMEWORK ---
+  run_s7: true   # S7 (Unified S+D+L Framework)
 
-  # --- CLUSTER 4: DOUBLE-SHIFT & UNIFIED ---
-  run_s10: true  # S10a, S10b (Cross-lingual DANN)
-  run_s14: true  # S14 (Advanced Multi-task S+D+L)
-
-  # --- CLUSTER 5: MODEL ABLATION ---
-  run_s11: true  # S11 (mBERT Zero-shot & DANN comparisons)
+  # --- COMPARISON ---
+  run_comparison: true # XLM-R vs mBERT on S4 & S7
