@@ -4,76 +4,81 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-# Định nghĩa các pha thực nghiệm theo Narrative mới
+# Lộ trình 11 kịch bản: Tập trung thẳng vào Multidomain và Multilingual
 PHASES = {
-    "Phase 1: Domain Robustness (RQ1)": ["S1", "S2", "S3"],
-    "Phase 2: Multilingual Robustness (RQ2)": ["S4", "S5", "S6"],
-    "Phase 3: Unified Robustness Framework (RQ3)": ["S7"],
-    "Model Comparison (XLM-R vs mBERT)": ["S2", "MBERT_S2", "S4", "MBERT_S4", "S7", "MBERT_S7"]
+    "Chặng 1: Multidomain (RQ1)": ["S1", "S2", "S3"],
+    "Chặng 2: Multilingual (RQ2)": ["S4", "S5", "S6"],
+    "Chặng 3: Unified Framework (RQ3)": ["S7", "S8", "S9"],
+    "Chặng 4: Model Ablation": ["S3", "S10", "S8", "S11"]
+}
+
+LABELS = {
+    "S1": "MD Baseline (Merge)",
+    "S2": "MD Multi-task",
+    "S3": "MD DANN (XLM-R)",
+    "S4": "ML Zero-shot",
+    "S5": "ML Translation",
+    "S6": "ML Joint",
+    "S7": "Unified Zero-shot",
+    "S8": "Unified DANN (XLM-R)",
+    "S9": "Unified Multi-task",
+    "S10": "MD DANN (mBERT)",
+    "S11": "Unified DANN (mBERT)"
 }
 
 def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
-    print("📊 Đang khởi tạo báo cáo tổng hợp theo Research Narrative mới...")
+    print("📊 Đang khởi tạo báo cáo tổng hợp (Bắt đầu từ Multidomain)...")
     os.makedirs(plots_dir, exist_ok=True)
     
     results = {}
     for filename in os.listdir(results_dir):
-        if filename.endswith(".json"):
+        if filename.endswith(".json") and filename.startswith("results_s"):
             path = os.path.join(results_dir, filename)
             try:
-                with open(path, "r") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    # Extract ID, e.g. "results_s1.json" -> "S1"
-                    name_parts = filename.replace("results_", "").replace(".json", "").upper().split("_")
-                    key_id = "_".join(name_parts) # Keep full name parts like MBERT_S4
+                    key_id = filename.replace("results_", "").replace(".json", "").upper()
                     results[key_id] = data.get("f1_macro", 0)
             except:
                 continue
 
     if not results:
-        print("⚠️ Không tìm thấy file kết quả nào trong thư mục results.")
+        print("⚠️ Không tìm thấy file kết quả nào.")
         return
 
-    # 1. BIỂU ĐỒ THEO PHA (Phase Plots)
     sns.set_style("whitegrid")
-    
     for phase_name, scenario_ids in PHASES.items():
         data_list = []
         for sid in scenario_ids:
             if sid in results:
-                data_list.append({"Scenario": sid, "F1-Macro": results[sid]})
+                data_list.append({"Scenario": sid, "F1-Macro": results[sid], "Technique": LABELS.get(sid, sid)})
         
         if data_list:
             df_phase = pd.DataFrame(data_list)
             plt.figure(figsize=(10, 6))
-            ax = sns.barplot(x="Scenario", y="F1-Macro", data=df_phase, palette="magma", hue=None)
+            palette = "viridis" if "Chặng 4" not in phase_name else "coolwarm"
+            ax = sns.barplot(x="Scenario", y="F1-Macro", data=df_phase, palette=palette, hue=None)
             for p in ax.patches:
                 ax.annotate(f'{p.get_height():.3f}', (p.get_x() + p.get_width() / 2., p.get_height()),
-                            ha='center', va='center', fontsize=12, color='black', xytext=(0, 8),
+                            ha='center', va='center', fontsize=11, color='black', xytext=(0, 8),
                             textcoords='offset points', fontweight='bold')
-            plt.title(f"{phase_name} Performance", fontsize=15, fontweight='bold')
+            plt.title(f"{phase_name}\nPerformance Analysis", fontsize=14, fontweight='bold')
             plt.ylim(0.0, 1.0)
-            plt.xticks(fontsize=12)
-            # Safe filename
             safe_name = phase_name.split(":")[0].replace(" ", "_").lower()
-            filename = f"{safe_name}_comparison.png"
-            plt.savefig(os.path.join(plots_dir, filename), bbox_inches='tight', dpi=300)
+            plt.savefig(os.path.join(plots_dir, f"report_{safe_name}.png"), bbox_inches='tight', dpi=300)
             plt.close()
-            print(f"✅ Đã tạo biểu đồ pha: {filename}")
 
-    # 2. GENERATE RESEARCH SUMMARY MD
     summary_path = os.path.join(results_dir, "research_summary.md")
     with open(summary_path, "w", encoding="utf-8") as f:
-        f.write("# Research Findings Summary\n\n")
+        f.write("# Báo cáo Kết quả (Lộ trình 11 Kịch bản: Đa miền & Đa ngôn ngữ)\n\n")
         for phase_name, scenario_ids in PHASES.items():
-            f.write(f"## {phase_name}\n")
-            f.write("| Scenario | F1-Macro |\n| :--- | :--- |\n")
+            f.write(f"### {phase_name}\n")
+            f.write("| Mã | Kỹ thuật | F1-Macro |\n| :--- | :--- | :--- |\n")
             for sid in scenario_ids:
                 if sid in results:
-                    f.write(f"| {sid} | {results[sid]:.4f} |\n")
+                    f.write(f"| **{sid}** | {LABELS.get(sid, '-')} | {results[sid]:.4f} |\n")
             f.write("\n")
-    
-    print(f"🎉 Hoàn tất! Báo cáo nghiên cứu đã được lưu tại '{summary_path}'")
+    print(f"🎉 Hoàn tất báo cáo tại '{summary_path}'")
 
 if __name__ == "__main__":
     generate_aggregate_report()
