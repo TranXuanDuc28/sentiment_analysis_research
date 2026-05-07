@@ -70,7 +70,7 @@ def main():
         t1, l1, d1, la1 = load_imdb("train", BASE_TRAIN)
         t2, l2, d2, la2 = load_yelp("train", BASE_TRAIN)
         t_all, l_all, d_all, la_all = t1+t2, l1+l2, d1+d2, la1+la2
-        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, 0.1, 42)
+        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
         tr_ld = make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True)
         vl_ld = make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE)
         model_mt = AdvancedMultiTaskModel(config["model"]["name"])
@@ -89,25 +89,25 @@ def main():
         t2, l2, d2, la2 = load_yelp("train", BASE_TRAIN)
         s_texts, s_labels, s_d_ids, s_la_ids = t1+t2, l1+l2, d1+d2, la1+la2
         t_texts, t_labels, t_d_ids, t_la_ids = load_amazon_split("english", "all", "train", BASE_TRAIN*2, unlabeled=True)
-        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, 0.2, 42)
+        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, test_size=0.2, random_state=42)
         s_ld = make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True)
         v_ld = make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE)
         t_ld = make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer, BATCH_SIZE, True)
         model_dn = DANNModel(config["model"]["name"])
         if not os.path.exists("checkpoints/model_s3_dann.pt"):
             if os.path.exists("checkpoints/model_s1_multidomain.pt"):
-                model_dann.load_state_dict(torch.load("checkpoints/model_s1_multidomain.pt", device), strict=False)
+                model_dn.load_state_dict(torch.load("checkpoints/model_s1_multidomain.pt", device), strict=False)
             w = compute_class_weights(l_tr)
-            model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, v_ld, EPOCHS, LR/10.0, device, w)
-            torch.save(model_dann.state_dict(), "checkpoints/model_s3_dann.pt")
-        else: model_dann.load_state_dict(torch.load("checkpoints/model_s3_dann.pt", device))
+            model_dn = train_dann(model_dn, tokenizer, s_ld, t_ld, v_ld, EPOCHS, LR/10.0, device, w)
+            torch.save(model_dn.state_dict(), "checkpoints/model_s3_dann.pt")
+        else: model_dn.load_state_dict(torch.load("checkpoints/model_s3_dann.pt", device))
         test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
-        res_s3 = evaluate_model(model_dann, test_loader, device, "S3_Multidomain_DANN")
+        res_s3 = evaluate_model(model_dn, test_loader, device, "S3_Multidomain_DANN")
         save_results(res_s3, "results/results_s3.json")
         
         # Vẽ t-SNE cho S3
-        visualize_tsne(model_dann, tokenizer, [s_loader, t_loader], ["Source (IMDb+Yelp)", "Target (Amazon)"], device, "S3_Multidomain_Alignment")
+        visualize_tsne(model_dn, tokenizer, [s_ld, t_ld], ["Source (IMDb+Yelp)", "Target (Amazon)"], device, "S3_Multidomain_Alignment")
 
     # =========================================================================
     # CHẶNG 2: THÁCH THỨC ĐA NGÔN NGỮ (MULTILINGUAL ANALYSIS)
@@ -120,7 +120,7 @@ def main():
         t1, l1, d1, la1 = load_imdb("train", BASE_TRAIN)
         t2, l2, d2, la2 = load_amazon_split("french", "all", "train", BASE_TRAIN)
         t_all, l_all, d_all, la_all = t1+t2, l1+l2, d1+d2, la1+la2
-        t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, 0.2, 42)
+        t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
         ld_tr = make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True)
         ld_vl = make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE)
         model_src = train_model(model_src, tokenizer, ld_tr, ld_vl, EPOCHS, LR, device, compute_class_weights(l_tr))
@@ -151,7 +151,7 @@ def main():
         t2, l2, d2, la2 = load_amazon_split("french", "all", "train", BASE_TRAIN)
         t3, l3, d3, la3 = load_vsfc("train", BASE_TRAIN)
         t_all, l_all, d_all, la_all = t1+t2+t3, l1+l2+l3, d1+d2+d3, la1+la2+la3
-        t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, 0.2, 42)
+        t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
         model = BaseModel(config["model"]["name"])
         if not os.path.exists("checkpoints/model_s6_joint.pt"):
             model = train_model(model, tokenizer, make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True), make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR, device, compute_class_weights(l_tr))
@@ -181,7 +181,7 @@ def main():
         t3, l3, d3, la3 = load_amazon_split("french", "all", "train", BASE_TRAIN)
         s_texts, s_labels, s_d_ids, s_la_ids = t1+t2+t3, l1+l2+l3, d1+d2+d3, la1+la2+la3
         t_vi, l_vi, d_vi, la_vi = load_vsfc("train", BASE_TRAIN*3, unlabeled=True)
-        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, 0.2, 42)
+        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, test_size=0.2, random_state=42)
         s_ld = make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True)
         t_ld = make_dataloader(t_vi, l_vi, d_vi, la_vi, tokenizer, BATCH_SIZE, True)
         model_dn = DANNModel(config["model"]["name"])
@@ -207,7 +207,7 @@ def main():
         l_all = l1+l2+l3+l_vi
         d_all = d1+d2+d3+d_vi
         la_all = la1+la2+la3+la_vi
-        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, 0.1, 42)
+        s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
         model_mt = AdvancedMultiTaskModel(config["model"]["name"])
         if not os.path.exists("checkpoints/model_s9_multitask.pt"):
             model_mt = train_multitask(model_mt, tokenizer, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights([lbl for lbl in l_tr if lbl >= 0]))
@@ -230,7 +230,7 @@ def main():
             print_banner("Scenario 10: mBERT on MD DANN")
             t1, l1, d1, la1 = load_imdb("train", BASE_TRAIN)
             t2, l2, d2, la2 = load_yelp("train", BASE_TRAIN)
-            s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2, l1+l2, d1+d2, la1+la2, 0.2, 42)
+            s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2, l1+l2, d1+d2, la1+la2, test_size=0.2, random_state=42)
             t_texts, t_labels, t_d_ids, t_la_ids = load_amazon_split("english", "all", "train", BASE_TRAIN*2, unlabeled=True)
             model_mb = DANNModel(mbert_name)
             if not os.path.exists("checkpoints/model_s10_mbert_dann.pt"):
@@ -245,7 +245,7 @@ def main():
             print_banner("Scenario 11: mBERT on ML Zero-shot")
             t1, l1, d1, la1 = load_imdb("train", BASE_TRAIN)
             t2, l2, d2, la2 = load_amazon_split("french", "all", "train", BASE_TRAIN)
-            t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2, l1+l2, d1+d2, la1+la2, 0.2, 42)
+            t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2, l1+l2, d1+d2, la1+la2, test_size=0.2, random_state=42)
             model_mb = BaseModel(mbert_name)
             if not os.path.exists("checkpoints/model_s11_mbert_src.pt"):
                 model_mb = train_model(model_mb, tokenizer_mb, make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer_mb, BATCH_SIZE, True), make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer_mb, BATCH_SIZE), EPOCHS, LR, device, compute_class_weights(l_tr))
@@ -260,7 +260,7 @@ def main():
             t1, l1, d1, la1 = load_imdb("train", BASE_TRAIN)
             t2, l2, d2, la2 = load_yelp("train", BASE_TRAIN)
             t3, l3, d3, la3 = load_amazon_split("french", "all", "train", BASE_TRAIN)
-            s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2+t3, l1+l2+l3, d1+d2+d3, la1+la2+la3, 0.2, 42)
+            s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2+t3, l1+l2+l3, d1+d2+d3, la1+la2+la3, test_size=0.2, random_state=42)
             t_vi, l_vi, d_vi, la_vi = load_vsfc("train", BASE_TRAIN*3, unlabeled=True)
             s_ld = make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer_mb, BATCH_SIZE, True)
             t_ld = make_dataloader(t_vi, l_vi, d_vi, la_vi, tokenizer_mb, BATCH_SIZE, True)
