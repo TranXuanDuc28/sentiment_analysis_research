@@ -7,26 +7,37 @@ model:
   num_domains: 5
 
 training:
-  epochs: 10         # Tăng lên 10 cho DANN để hội tụ tốt hơn
+  epochs: 10         
   batch_size: 16
   learning_rate: 3e-5
   max_length: 128
   dann_alpha: 1.0
 
 scenarios:
-  base_samples_train: 5000  # 5,000 samples per domain
-  base_samples_test: 2000   # 2,000 samples per domain
-  few_shot_samples: 500     # 500 samples for Low-resource SFT
+  base_samples_train: 5000  
+  base_samples_test: 2000   
+  few_shot_samples: 500     
   
-  # Bật/Tắt các kịch bản tại đây
-  run_s1: true   
-  run_s2: true  
-  run_s3: true  
-  run_s4: true   
-  run_s5: true   
-  run_s6: true  
-  run_s7: true   
-  run_s8: true   
-  run_s9: true   
-  run_s10: true  
-  run_s11: true  
+  # --- CLUSTER 1: BASELINES & UPPER BOUNDS ---
+  run_s1: true   # S1a (IMDb), S1b (VSFC)
+  run_s7: true   # S7 (Amazon Upper Bound)
+
+  # --- CLUSTER 2: MULTIDOMAIN ANALYSIS ---
+  run_s4: true   # S4 (Zero-shot Domain)
+  run_s5: true   # S5 (Pure Multi-source)
+  run_s9: true   # S9a, S9b (Few-shot Fine-tuning)
+  run_s6: true   # S6a, S6b (DANN Domain Adaptation)
+  run_s8: true   # S8 (Unified Multidomain)
+
+  # --- CLUSTER 3: MULTILINGUAL ANALYSIS ---
+  run_s2: true   # S2 (Zero-shot Multilingual)
+  run_s13: true  # S13 (Translation Baseline)
+  run_s3: true   # S3 (Joint Multilingual)
+  run_s12: true  # S12 (Cross-lingual Fine-tuning)
+
+  # --- CLUSTER 4: DOUBLE-SHIFT & UNIFIED ---
+  run_s10: true  # S10a, S10b (Cross-lingual DANN)
+  run_s14: true  # S14 (Advanced Multi-task S+D+L)
+
+  # --- CLUSTER 5: MODEL ABLATION ---
+  run_s11: true  # S11 (mBERT Zero-shot & DANN comparisons)

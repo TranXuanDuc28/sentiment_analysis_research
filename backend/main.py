@@ -41,6 +41,10 @@ def main():
     global_results = {}
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
 
+    # =========================================================================
+    # CLUSTER 1: CÁC MỐC CƠ SỞ (BASELINES & UPPER BOUNDS)
+    # =========================================================================
+
     # --- S1a: Monolingual Source Baseline (IMDb) ---
     if args.s in ["0", "1a"] and config["scenarios"].get("run_s1", True):
         print_banner("Scenario 1a: Monolingual Source Baseline (IMDb)")
@@ -89,61 +93,33 @@ def main():
         global_results["S1b"] = evaluate_model(model_vi, test_loader_vi, device, "S1b_Baseline_VSFC")
         save_results(global_results["S1b"], "results/results_s1b.json")
 
-    # --- S2: Zero-Shot Multilingual Transfer (IMDb -> VSFC) ---
-    if args.s in ["0", "2"] and config["scenarios"].get("run_s2", True):
-        print_banner("Scenario 2: Zero-Shot Multilingual Transfer (IMDb -> VSFC)")
-        model = BaseModel(config["model"]["name"])
-        if os.path.exists("checkpoints/model_imdb.pt"):
-            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
-        else:
-            print("⚠️ Cần chạy S1a trước để có mô hình IMDb.")
-        
-        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
-        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
-        res_s2 = evaluate_model(model, test_loader_vi, device, "S2_ZeroShot_IMDb_VSFC")
-        save_results(res_s2, "results/results_s2.json")
-        
-        try:
-            vis_en_t, vis_en_l, vis_en_d, vis_en_la = load_imdb("test", max_samples=300)
-            vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la = load_vsfc("test", max_samples=300)
-            ld_en = make_dataloader(vis_en_t, vis_en_l, vis_en_d, vis_en_la, tokenizer, batch_size=BATCH_SIZE)
-            ld_vi = make_dataloader(vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la, tokenizer, batch_size=BATCH_SIZE)
-            visualize_tsne(model, tokenizer, [ld_en, ld_vi], ["English (IMDb)", "Vietnamese (VSFC)"], device, "S2_Language_Gap_ZeroShot")
-        except Exception as e:
-            pass
-
-    # --- S3: Joint Multilingual Learning (IMDb + VSFC) ---
-    if args.s in ["0", "3"] and config["scenarios"].get("run_s3", True):
-        print_banner("Scenario 3: Joint Multilingual Learning (IMDb + VSFC)")
-        t_en, l_en, d_en, la_en = load_imdb("train", max_samples=BASE_TRAIN)
-        t_vi, l_vi, d_vi, la_vi = load_vsfc("train", max_samples=BASE_TRAIN)
-        t_all, l_all, d_all, la_all = t_en + t_vi, l_en + l_vi, d_en + d_vi, la_en + la_vi
+    # --- S7: Supervised Target Upper Bound (Amazon -> Amazon) ---
+    if args.s in ["0", "7"] and config["scenarios"].get("run_s7", True):
+        print_banner("Scenario 7: Supervised Target Upper Bound (Amazon -> Amazon)")
+        t_all, l_all, d_all, la_all = load_amazon_split("english", "all", "train", max_samples=BASE_TRAIN)
         t_train, t_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
         
         train_loader = make_dataloader(t_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
         
         model = BaseModel(config["model"]["name"])
-        checkpoint_path = "checkpoints/model_s3_joint.pt"
+        checkpoint_path = "checkpoints/model_upper_bound_s7.pt"
         if os.path.exists(checkpoint_path):
-            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
             model.load_state_dict(torch.load(checkpoint_path, map_location=device))
         else:
             weights = compute_class_weights(l_train)
             model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
             torch.save(model.state_dict(), checkpoint_path)
         
-        print("\n--- S3a: Testing on Vietnamese (VSFC) ---")
-        test_vi_t, test_vi_l, test_vi_d, test_vi_la = load_vsfc("test", max_samples=BASE_TEST)
-        test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, test_vi_la, tokenizer, batch_size=BATCH_SIZE)
-        res_s3a = evaluate_model(model, test_loader_vi, device, "S3a_Joint_Multilingual_VSFC")
-        save_results(res_s3a, "results/results_s3a.json")
+        test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
+        test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
+        res_s7 = evaluate_model(model, test_loader, device, "S7_UpperBound_Amazon")
+        save_results(res_s7, "results/results_s7.json")
 
-        print("\n--- S3b: Testing on English (IMDb) ---")
-        test_en_t, test_en_l, test_en_d, test_en_la = load_imdb("test", max_samples=BASE_TEST)
-        test_loader_en = make_dataloader(test_en_t, test_en_l, test_en_d, test_en_la, tokenizer, batch_size=BATCH_SIZE)
-        res_s3b = evaluate_model(model, test_loader_en, device, "S3b_Joint_Multilingual_IMDb")
-        save_results(res_s3b, "results/results_s3b.json")
+
+    # =========================================================================
+    # CLUSTER 2: BÀI TOÁN ĐA MIỀN (MULTIDOMAIN ANALYSIS)
+    # =========================================================================
 
     # --- S4: Zero-Shot Domain Transfer (IMDb -> Amazon) ---
     if args.s in ["0", "4"] and config["scenarios"].get("run_s4", True):
@@ -184,6 +160,52 @@ def main():
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
         res_s5 = evaluate_model(model, test_loader, device, "S5_Pure_Multidomain_Amazon")
         save_results(res_s5, "results/results_s5.json")
+
+    # --- S9: Supervised Fine-tuning (SFT) ---
+    if args.s in ["0", "9", "9a", "9b"] and config["scenarios"].get("run_s9", True):
+        # S9a: Single-Source (IMDb) -> Amazon SFT
+        if args.s in ["0", "9", "9a"]:
+            print_banner(f"Scenario 9a: Single-Source SFT (IMDb -> {FEW_SHOT} Amazon)")
+            model = BaseModel(config["model"]["name"])
+            if os.path.exists("checkpoints/model_imdb.pt"):
+                model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
+            
+            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=FEW_SHOT)
+            train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
+            
+            checkpoint_path = "checkpoints/model_sft_s9a.pt"
+            if os.path.exists(checkpoint_path):
+                model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            else:
+                model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+                torch.save(model.state_dict(), checkpoint_path)
+            
+            tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
+            test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
+            res_s9a = evaluate_model(model, test_loader, device, "S9a_SFT_IMDb_Amazon")
+            save_results(res_s9a, "results/results_s9a.json")
+
+        # S9b: Multi-Source (IMDb + Yelp) -> Amazon SFT
+        if args.s in ["0", "9", "9b"]:
+            print_banner(f"Scenario 9b: Multi-Source SFT (IMDb+Yelp -> {FEW_SHOT} Amazon)")
+            model = BaseModel(config["model"]["name"])
+            if os.path.exists("checkpoints/model_s5_multidomain.pt"):
+                model.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device))
+            
+            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=FEW_SHOT)
+            train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
+            
+            checkpoint_path = "checkpoints/model_sft_s9b.pt"
+            if os.path.exists(checkpoint_path):
+                model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            else:
+                model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+                torch.save(model.state_dict(), checkpoint_path)
+            
+            tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
+            test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
+            res_s9b = evaluate_model(model, test_loader, device, "S9b_SFT_Multi_Amazon")
+            save_results(res_s9b, "results/results_s9b.json")
 
     # --- S6a: Single-Source Domain Adaptation DANN (Source: IMDb, Target: Amazon) ---
     if args.s in ["0", "6", "6a"] and config["scenarios"].get("run_s6", True):
@@ -246,29 +268,6 @@ def main():
         res_s6b = evaluate_model(model_dann, test_loader, device, "S6b_MultiSource_DANN_Amazon")
         save_results(res_s6b, "results/results_s6b.json")
 
-    # --- S7: Supervised Target Upper Bound (Amazon -> Amazon) ---
-    if args.s in ["0", "7"] and config["scenarios"].get("run_s7", True):
-        print_banner("Scenario 7: Supervised Target Upper Bound (Amazon -> Amazon)")
-        t_all, l_all, d_all, la_all = load_amazon_split("english", "all", "train", max_samples=BASE_TRAIN)
-        t_train, t_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
-        
-        train_loader = make_dataloader(t_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
-        val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
-        
-        model = BaseModel(config["model"]["name"])
-        checkpoint_path = "checkpoints/model_upper_bound_s7.pt"
-        if os.path.exists(checkpoint_path):
-            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
-        else:
-            weights = compute_class_weights(l_train)
-            model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
-            torch.save(model.state_dict(), checkpoint_path)
-        
-        test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
-        test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
-        res_s7 = evaluate_model(model, test_loader, device, "S7_UpperBound_Amazon")
-        save_results(res_s7, "results/results_s7.json")
-
     # --- S8: Multi-domain Evaluation (Amz+IMDb+Yelp -> Each) ---
     if args.s in ["0", "8"] and config["scenarios"].get("run_s8", True):
         print_banner("Scenario 8: Unified Multi-domain Learning (Amz+IMDb+Yelp)")
@@ -301,51 +300,121 @@ def main():
             res = evaluate_model(model, t_loader, device, f"S8_MDL_{domain_name}")
             save_results(res, f"results/results_s8_{domain_name.lower()}.json")
 
-    # --- S9: Supervised Fine-tuning (SFT) ---
-    if args.s in ["0", "9", "9a", "9b"] and config["scenarios"].get("run_s9", True):
-        # S9a: Single-Source (IMDb) -> Amazon SFT
-        if args.s in ["0", "9", "9a"]:
-            print_banner(f"Scenario 9a: Single-Source SFT (IMDb -> {FEW_SHOT} Amazon)")
-            model = BaseModel(config["model"]["name"])
-            if os.path.exists("checkpoints/model_imdb.pt"):
-                model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
-            
-            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=FEW_SHOT)
-            train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
-            
-            checkpoint_path = "checkpoints/model_sft_s9a.pt"
-            if os.path.exists(checkpoint_path):
-                model.load_state_dict(torch.load(checkpoint_path, map_location=device))
-            else:
-                model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
-                torch.save(model.state_dict(), checkpoint_path)
-            
-            tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
-            test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
-            res_s9a = evaluate_model(model, test_loader, device, "S9a_SFT_IMDb_Amazon")
-            save_results(res_s9a, "results/results_s9a.json")
 
-        # S9b: Multi-Source (IMDb + Yelp) -> Amazon SFT
-        if args.s in ["0", "9", "9b"]:
-            print_banner(f"Scenario 9b: Multi-Source SFT (IMDb+Yelp -> {FEW_SHOT} Amazon)")
-            model = BaseModel(config["model"]["name"])
-            if os.path.exists("checkpoints/model_s5_multidomain.pt"):
-                model.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device))
+    # =========================================================================
+    # CLUSTER 3: BÀI TOÁN ĐA NGÔN NGỮ (MULTILINGUAL ANALYSIS)
+    # =========================================================================
+
+    # --- S2: Zero-Shot Multilingual Transfer (IMDb -> VSFC) ---
+    if args.s in ["0", "2"] and config["scenarios"].get("run_s2", True):
+        print_banner("Scenario 2: Zero-Shot Multilingual Transfer (IMDb -> VSFC)")
+        model = BaseModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_imdb.pt"):
+            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
+        else:
+            print("⚠️ Cần chạy S1a trước để có mô hình IMDb.")
+        
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        res_s2 = evaluate_model(model, test_loader_vi, device, "S2_ZeroShot_IMDb_VSFC")
+        save_results(res_s2, "results/results_s2.json")
+        
+        try:
+            vis_en_t, vis_en_l, vis_en_d, vis_en_la = load_imdb("test", max_samples=300)
+            vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la = load_vsfc("test", max_samples=300)
+            ld_en = make_dataloader(vis_en_t, vis_en_l, vis_en_d, vis_en_la, tokenizer, batch_size=BATCH_SIZE)
+            ld_vi = make_dataloader(vis_vi_t, vis_vi_l, vis_vi_d, vis_vi_la, tokenizer, batch_size=BATCH_SIZE)
+            visualize_tsne(model, tokenizer, [ld_en, ld_vi], ["English (IMDb)", "Vietnamese (VSFC)"], device, "S2_Language_Gap_ZeroShot")
+        except Exception as e:
+            pass
+
+    # --- S13: Translation-Based Cross-lingual Methods ---
+    if args.s in ["0", "13"]:
+        print_banner("Scenario 13: Translation-Based Methods (VSFC -> English -> IMDb Model)")
+        model = BaseModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_imdb.pt"):
+            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
             
-            t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=FEW_SHOT)
-            train_loader = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=8, shuffle=True)
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
+        
+        print("🌍 Đang dịch dữ liệu test từ Tiếng Việt sang Tiếng Anh bằng deep-translator...")
+        try:
+            from deep_translator import GoogleTranslator
+            translator = GoogleTranslator(source='vi', target='en')
+            test_texts_translated = []
+            from tqdm import tqdm
+            for text in tqdm(test_texts_vi, desc="Translating"):
+                try:
+                    trans = translator.translate(text[:4999])
+                    test_texts_translated.append(trans if trans else "")
+                except Exception as e:
+                    test_texts_translated.append(text)
+        except ImportError:
+            test_texts_translated = test_texts_vi
             
-            checkpoint_path = "checkpoints/model_sft_s9b.pt"
-            if os.path.exists(checkpoint_path):
-                model.load_state_dict(torch.load(checkpoint_path, map_location=device))
-            else:
-                model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
-                torch.save(model.state_dict(), checkpoint_path)
-            
-            tt, tl, td, tla = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
-            test_loader = make_dataloader(tt, tl, td, tla, tokenizer, batch_size=BATCH_SIZE)
-            res_s9b = evaluate_model(model, test_loader, device, "S9b_SFT_Multi_Amazon")
-            save_results(res_s9b, "results/results_s9b.json")
+        test_loader_trans = make_dataloader(test_texts_translated, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        res_s13 = evaluate_model(model, test_loader_trans, device, "S13_Translation_VSFC_EN")
+        save_results(res_s13, "results/results_s13.json")
+
+    # --- S3: Joint Multilingual Learning (IMDb + VSFC) ---
+    if args.s in ["0", "3"] and config["scenarios"].get("run_s3", True):
+        print_banner("Scenario 3: Joint Multilingual Learning (IMDb + VSFC)")
+        t_en, l_en, d_en, la_en = load_imdb("train", max_samples=BASE_TRAIN)
+        t_vi, l_vi, d_vi, la_vi = load_vsfc("train", max_samples=BASE_TRAIN)
+        t_all, l_all, d_all, la_all = t_en + t_vi, l_en + l_vi, d_en + d_vi, la_en + la_vi
+        t_train, t_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
+        
+        train_loader = make_dataloader(t_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+        val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
+        
+        model = BaseModel(config["model"]["name"])
+        checkpoint_path = "checkpoints/model_s3_joint.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            weights = compute_class_weights(l_train)
+            model = train_model(model, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+            torch.save(model.state_dict(), checkpoint_path)
+        
+        print("\n--- S3a: Testing on Vietnamese (VSFC) ---")
+        test_vi_t, test_vi_l, test_vi_d, test_vi_la = load_vsfc("test", max_samples=BASE_TEST)
+        test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, test_vi_la, tokenizer, batch_size=BATCH_SIZE)
+        res_s3a = evaluate_model(model, test_loader_vi, device, "S3a_Joint_Multilingual_VSFC")
+        save_results(res_s3a, "results/results_s3a.json")
+
+        print("\n--- S3b: Testing on English (IMDb) ---")
+        test_en_t, test_en_l, test_en_d, test_en_la = load_imdb("test", max_samples=BASE_TEST)
+        test_loader_en = make_dataloader(test_en_t, test_en_l, test_en_d, test_en_la, tokenizer, batch_size=BATCH_SIZE)
+        res_s3b = evaluate_model(model, test_loader_en, device, "S3b_Joint_Multilingual_IMDb")
+        save_results(res_s3b, "results/results_s3b.json")
+
+    # --- S12: Cross-lingual Target Fine-Tuning (IMDb -> VSFC) ---
+    if args.s in ["0", "12"]:
+        print_banner(f"Scenario 12: Cross-lingual Target Fine-Tuning (IMDb -> {FEW_SHOT} VSFC)")
+        model = BaseModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_imdb.pt"):
+            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
+        
+        t_vsfc, l_vsfc, d_vsfc, la_vsfc = load_vsfc("train", max_samples=FEW_SHOT)
+        train_loader = make_dataloader(t_vsfc, l_vsfc, d_vsfc, la_vsfc, tokenizer, batch_size=8, shuffle=True)
+        
+        checkpoint_path = "checkpoints/model_sft_s12.pt"
+        if os.path.exists(checkpoint_path):
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+            torch.save(model.state_dict(), checkpoint_path)
+        
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        res_s12 = evaluate_model(model, test_loader_vi, device, "S12_SFT_IMDb_VSFC")
+        save_results(res_s12, "results/results_s12.json")
+
+
+    # =========================================================================
+    # CLUSTER 4: THÍCH ỨNG KÉP & HỢP NHẤT (DOUBLE-SHIFT & UNIFIED)
+    # =========================================================================
 
     # --- S10a: Multi-source Cross-lingual Transfer (IMDb + Yelp -> VSFC) ---
     if args.s in ["0", "10", "10a"] and config["scenarios"].get("run_s10", True):
@@ -388,6 +457,71 @@ def main():
         test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
         res_s10b = evaluate_model(model_dann, test_loader_vi, device, "S10b_MultiCross_DANN")
         save_results(res_s10b, "results/results_s10b.json")
+
+    # --- S14: Advanced Multi-task Learning (Sentiment + Domain + Language) ---
+    if args.s in ["0", "14"]:
+        print_banner("Scenario 14: Unified Multi-task Learning Framework (S+D+L)")
+        t_en1, l_en1, d_en1, la_en1 = load_imdb("train", max_samples=BASE_TRAIN)
+        t_en2, l_en2, d_en2, la_en2 = load_yelp("train", max_samples=BASE_TRAIN)
+        t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=BASE_TRAIN)
+        
+        # Lấy dữ liệu tiếng Việt (VSFC) Unlabeled cho Cross-lingual target
+        t_vi, l_vi, d_vi, la_vi = load_vsfc("train", max_samples=BASE_TRAIN, unlabeled=True)
+        
+        t_all = t_en1 + t_en2 + t_amz + t_vi
+        l_all = l_en1 + l_en2 + l_amz + l_vi
+        d_all = d_en1 + d_en2 + d_amz + d_vi
+        la_all = la_en1 + la_en2 + la_amz + la_vi
+        
+        s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
+        
+        train_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+        val_loader = make_dataloader(s_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
+        
+        model_mtl = AdvancedMultiTaskModel(config["model"]["name"])
+        checkpoint_path = "checkpoints/model_s14_multitask.pt"
+        if os.path.exists(checkpoint_path):
+            model_mtl.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            if os.path.exists("checkpoints/model_s8_mdl.pt"):
+                model_mtl.load_state_dict(torch.load("checkpoints/model_s8_mdl.pt", map_location=device), strict=False)
+            
+            weights = compute_class_weights([lbl for lbl in l_train if lbl >= 0])
+            model_mtl = train_multitask(model_mtl, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+            torch.save(model_mtl.state_dict(), checkpoint_path)
+            
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        
+        model_mtl.eval()
+        model_mtl.to(device)
+        correct, total = 0, 0
+        from sklearn.metrics import classification_report
+        all_preds = []
+        all_labels = []
+        with torch.no_grad():
+            for b in test_loader_vi:
+                s_lgt, _, _ = model_mtl(b["input_ids"].to(device), b["attention_mask"].to(device))
+                preds = torch.argmax(s_lgt, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(b["labels"].cpu().numpy())
+                correct += (preds == b["labels"].to(device)).sum().item()
+                total += b["labels"].size(0)
+        
+        acc = correct / total
+        print(f"\n[S14] Accuracy: {acc*100:.2f}%")
+        
+        res_s14 = {
+            "scenario": "S14_Advanced_MultiTask",
+            "accuracy": acc,
+            "report": classification_report(all_labels, all_preds, output_dict=True)
+        }
+        save_results(res_s14, "results/results_s14.json")
+
+
+    # =========================================================================
+    # CLUSTER 5: ĐỐI SÁNH MÔ HÌNH (MODEL ABLATION - mBERT vs XLM-R)
+    # =========================================================================
 
     # --- S11: Model Comparison (mBERT vs XLM-R) ---
     if args.s in ["0", "11", "11a", "11b", "11c", "11d"] and config["scenarios"].get("run_s11", True):
@@ -482,116 +616,6 @@ def main():
             test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer_mbert, batch_size=BATCH_SIZE)
             res_s11b = evaluate_model(model_mbert_vi, test_loader_vi, device, "S11b_ModelComp_mBERT_VSFC")
             save_results(res_s11b, "results/results_s11b.json")
-
-    # --- S12: Cross-lingual Target Fine-Tuning (IMDb -> VSFC) ---
-    if args.s in ["0", "12"]:
-        print_banner(f"Scenario 12: Cross-lingual Target Fine-Tuning (IMDb -> {FEW_SHOT} VSFC)")
-        model = BaseModel(config["model"]["name"])
-        if os.path.exists("checkpoints/model_imdb.pt"):
-            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
-        
-        t_vsfc, l_vsfc, d_vsfc, la_vsfc = load_vsfc("train", max_samples=FEW_SHOT)
-        train_loader = make_dataloader(t_vsfc, l_vsfc, d_vsfc, la_vsfc, tokenizer, batch_size=8, shuffle=True)
-        
-        checkpoint_path = "checkpoints/model_sft_s12.pt"
-        if os.path.exists(checkpoint_path):
-            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
-        else:
-            model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
-            torch.save(model.state_dict(), checkpoint_path)
-        
-        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
-        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
-        res_s12 = evaluate_model(model, test_loader_vi, device, "S12_SFT_IMDb_VSFC")
-        save_results(res_s12, "results/results_s12.json")
-
-    # --- S13: Translation-Based Cross-lingual Methods ---
-    if args.s in ["0", "13"]:
-        print_banner("Scenario 13: Translation-Based Methods (VSFC -> English -> IMDb Model)")
-        model = BaseModel(config["model"]["name"])
-        if os.path.exists("checkpoints/model_imdb.pt"):
-            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
-            
-        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
-        
-        print("🌍 Đang dịch dữ liệu test từ Tiếng Việt sang Tiếng Anh bằng deep-translator...")
-        try:
-            from deep_translator import GoogleTranslator
-            translator = GoogleTranslator(source='vi', target='en')
-            test_texts_translated = []
-            from tqdm import tqdm
-            for text in tqdm(test_texts_vi, desc="Translating"):
-                try:
-                    trans = translator.translate(text[:4999])
-                    test_texts_translated.append(trans if trans else "")
-                except Exception as e:
-                    test_texts_translated.append(text)
-        except ImportError:
-            test_texts_translated = test_texts_vi
-            
-        test_loader_trans = make_dataloader(test_texts_translated, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
-        res_s13 = evaluate_model(model, test_loader_trans, device, "S13_Translation_VSFC_EN")
-        save_results(res_s13, "results/results_s13.json")
-
-    # --- S14: Advanced Multi-task Learning (Sentiment + Domain + Language) ---
-    if args.s in ["0", "14"]:
-        print_banner("Scenario 14: Unified Multi-task Learning Framework (S+D+L)")
-        t_en1, l_en1, d_en1, la_en1 = load_imdb("train", max_samples=BASE_TRAIN)
-        t_en2, l_en2, d_en2, la_en2 = load_yelp("train", max_samples=BASE_TRAIN)
-        t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", max_samples=BASE_TRAIN)
-        
-        # Lấy dữ liệu tiếng Việt (VSFC) Unlabeled cho Cross-lingual target
-        t_vi, l_vi, d_vi, la_vi = load_vsfc("train", max_samples=BASE_TRAIN, unlabeled=True)
-        
-        t_all = t_en1 + t_en2 + t_amz + t_vi
-        l_all = l_en1 + l_en2 + l_amz + l_vi
-        d_all = d_en1 + d_en2 + d_amz + d_vi
-        la_all = la_en1 + la_en2 + la_amz + la_vi
-        
-        s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
-        
-        train_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
-        val_loader = make_dataloader(s_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
-        
-        model_mtl = AdvancedMultiTaskModel(config["model"]["name"])
-        checkpoint_path = "checkpoints/model_s14_multitask.pt"
-        if os.path.exists(checkpoint_path):
-            model_mtl.load_state_dict(torch.load(checkpoint_path, map_location=device))
-        else:
-            if os.path.exists("checkpoints/model_s8_mdl.pt"):
-                model_mtl.load_state_dict(torch.load("checkpoints/model_s8_mdl.pt", map_location=device), strict=False)
-            
-            weights = compute_class_weights([lbl for lbl in l_train if lbl >= 0])
-            model_mtl = train_multitask(model_mtl, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
-            torch.save(model_mtl.state_dict(), checkpoint_path)
-            
-        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
-        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
-        
-        model_mtl.eval()
-        model_mtl.to(device)
-        correct, total = 0, 0
-        from sklearn.metrics import classification_report
-        all_preds = []
-        all_labels = []
-        with torch.no_grad():
-            for b in test_loader_vi:
-                s_lgt, _, _ = model_mtl(b["input_ids"].to(device), b["attention_mask"].to(device))
-                preds = torch.argmax(s_lgt, dim=1)
-                all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(b["labels"].cpu().numpy())
-                correct += (preds == b["labels"].to(device)).sum().item()
-                total += b["labels"].size(0)
-        
-        acc = correct / total
-        print(f"\n[S14] Accuracy: {acc*100:.2f}%")
-        
-        res_s14 = {
-            "scenario": "S14_Advanced_MultiTask",
-            "accuracy": acc,
-            "report": classification_report(all_labels, all_preds, output_dict=True)
-        }
-        save_results(res_s14, "results/results_s14.json")
 
     print_banner("ALL EXPERIMENTS COMPLETED")
     try:
