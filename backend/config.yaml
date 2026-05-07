@@ -4,8 +4,8 @@
 model:
   name: "xlm-roberta-base"
   mbert: "bert-base-multilingual-cased"
-  num_labels: 3
-  num_domains: 5
+  num_labels: 2
+  num_domains: 6
 
 training:
   epochs: 10         

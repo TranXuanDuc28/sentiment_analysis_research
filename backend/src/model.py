@@ -79,7 +79,7 @@ class UnifiedFrameworkModel(nn.Module):
     Kết hợp: Sentiment Classification + Domain Adaptation + Language Alignment.
     Sử dụng Gradient Reversal Layer (GRL) để xóa bỏ ranh giới miền và ngôn ngữ.
     """
-    def __init__(self, model_name="xlm-roberta-base", num_labels=3, num_domains=5, num_languages=2):
+    def __init__(self, model_name="xlm-roberta-base", num_labels=2, num_domains=6, num_languages=2):
         super(UnifiedFrameworkModel, self).__init__()
         self.encoder = AutoModel.from_pretrained(model_name)
         

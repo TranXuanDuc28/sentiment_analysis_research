@@ -108,7 +108,7 @@ def main():
         t_train, t_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
         train_loader = make_dataloader(t_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         
-        model_mtl = UnifiedFrameworkModel(config["model"]["name"])
+        model_mtl = UnifiedFrameworkModel(config["model"]["name"], num_labels=config["model"]["num_labels"], num_domains=config["model"]["num_domains"])
         checkpoint_path = "checkpoints/model_s3_mtl.pt"
         if os.path.exists(checkpoint_path):
             print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
@@ -215,7 +215,7 @@ def main():
         s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
         train_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         
-        model_unified = UnifiedFrameworkModel(config["model"]["name"])
+        model_unified = UnifiedFrameworkModel(config["model"]["name"], num_labels=config["model"]["num_labels"], num_domains=config["model"]["num_domains"])
         checkpoint_path = "checkpoints/model_s7_unified.pt"
         if os.path.exists(checkpoint_path):
             print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
@@ -281,7 +281,7 @@ def main():
 
         # 3. mBERT S7 (Unified Framework)
         print_banner("mBERT Scenario 7 (Unified Framework)")
-        model_mb_unified = UnifiedFrameworkModel(mbert_name)
+        model_mb_unified = UnifiedFrameworkModel(mbert_name, num_labels=config["model"]["num_labels"], num_domains=config["model"]["num_domains"])
         checkpoint_mb_unified = "checkpoints/model_mbert_s7_unified.pt"
         if os.path.exists(checkpoint_mb_unified):
             model_mb_unified.load_state_dict(torch.load(checkpoint_mb_unified, map_location=device))
