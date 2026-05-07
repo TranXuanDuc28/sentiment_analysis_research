@@ -6,10 +6,10 @@ import pandas as pd
 
 # Định nghĩa các pha thực nghiệm theo Narrative mới
 PHASES = {
-    "Phase 1: Multidomain (RQ1)": ["S1", "S2", "S3"],
-    "Phase 2: Multilingual (RQ2)": ["S4", "S5", "S6"],
-    "Phase 3: Combined Shift (RQ3)": ["S7"],
-    "Model Comparison (XLM-R vs mBERT)": ["S4", "MBERT_S4", "S7"]
+    "Phase 1: Domain Robustness (RQ1)": ["S1", "S2", "S3"],
+    "Phase 2: Multilingual Robustness (RQ2)": ["S4", "S5", "S6"],
+    "Phase 3: Unified Robustness Framework (RQ3)": ["S7"],
+    "Model Comparison (XLM-R vs mBERT)": ["S2", "MBERT_S2", "S4", "MBERT_S4", "S7", "MBERT_S7"]
 }
 
 def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):

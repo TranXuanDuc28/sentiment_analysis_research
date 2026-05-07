@@ -19,17 +19,17 @@ scenarios:
   base_samples_test: 2000   
   few_shot_samples: 500     
   
-  # --- PHASE 1: MULTIDOMAIN ANALYSIS ---
-  run_s1: true   # S1 (Transfer Learning: IMDb -> Amazon)
+  # --- PHASE 1: DOMAIN ROBUSTNESS ---
+  run_s1: true   # S1 (Zero-shot Domain Transfer: IMDb -> Amazon)
   run_s2: true   # S2 (Domain Adaptation: IMDb+Yelp -> Amazon)
   run_s3: true   # S3 (Multi-task Learning: Sentiment + Domain)
 
-  # --- PHASE 2: MULTILINGUAL ANALYSIS ---
+  # --- PHASE 2: MULTILINGUAL ROBUSTNESS ---
   run_s4: true   # S4 (Zero-shot Cross-lingual: EN -> VI)
   run_s5: true   # S5 (Few-shot Fine-tuning: VI)
   run_s6: true   # S6 (Translation-Based Baseline)
 
-  # --- PHASE 3: COMBINED FRAMEWORK ---
+  # --- PHASE 3: UNIFIED ROBUSTNESS FRAMEWORK ---
   run_s7: true   # S7 (Unified S+D+L Framework)
 
   # --- COMPARISON ---

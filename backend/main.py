@@ -41,12 +41,12 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
 
     # =========================================================================
-    # PHASE 1: MULTIDOMAIN ANALYSIS (RQ1)
+    # PHASE 1: DOMAIN ROBUSTNESS (RQ1)
     # =========================================================================
 
-    # --- S1: Transfer Learning (IMDb -> Amazon) ---
+    # --- S1: Zero-shot Domain Transfer (IMDb -> Amazon) ---
     if args.s in ["0", "1"] and config["scenarios"].get("run_s1", True):
-        print_banner("Scenario 1: Transfer Learning (IMDb -> Amazon)")
+        print_banner("Scenario 1: Zero-shot Domain Transfer (IMDb -> Amazon)")
         # 1. Train on IMDb (Source)
         t_all, l_all, d_all, la_all = load_imdb("train", max_samples=BASE_TRAIN)
         t_train, t_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
@@ -66,7 +66,7 @@ def main():
         # 2. Evaluate on Amazon (Target)
         test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
         test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
-        res_s1 = evaluate_model(model, test_loader, device, "S1_Transfer_IMDb_Amazon")
+        res_s1 = evaluate_model(model, test_loader, device, "S1_ZeroShot_Domain_IMDb_Amazon")
         save_results(res_s1, "results/results_s1.json")
 
     # --- S2: Domain Adaptation (DANN: IMDb + Yelp -> Amazon) ---
@@ -125,7 +125,7 @@ def main():
 
 
     # =========================================================================
-    # PHASE 2: MULTILINGUAL ANALYSIS (RQ2)
+    # PHASE 2: MULTILINGUAL ROBUSTNESS (RQ2)
     # =========================================================================
 
     # --- S4: Zero-shot Cross-lingual (IMDb EN -> VSFC VI) ---
@@ -195,7 +195,7 @@ def main():
 
 
     # =========================================================================
-    # PHASE 3: COMBINED FRAMEWORK (RQ3)
+    # PHASE 3: UNIFIED ROBUSTNESS FRAMEWORK (RQ3)
     # =========================================================================
 
     # --- S7: Unified S+D+L Framework ---
@@ -256,6 +256,52 @@ def main():
         test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, test_vi_la, tokenizer_mbert, batch_size=BATCH_SIZE)
         res_mb_s4 = evaluate_model(model_mb, test_loader_vi, device, "mBERT_S4_ZeroShot")
         save_results(res_mb_s4, "results/results_mbert_s4.json")
+
+        # 2. mBERT S2 (DANN: IMDb+Yelp -> Amazon)
+        print_banner("mBERT Scenario 2 (DANN)")
+        model_mb_dann = DANNModel(mbert_name)
+        checkpoint_mb_dann = "checkpoints/model_mbert_s2_dann.pt"
+        if os.path.exists(checkpoint_mb_dann):
+            model_mb_dann.load_state_dict(torch.load(checkpoint_mb_dann, map_location=device))
+        else:
+            t1, l1, d1, la1 = load_imdb("train", max_samples=BASE_TRAIN)
+            t2, l2, d2, la2 = load_yelp("train", max_samples=BASE_TRAIN)
+            s_texts, s_labels, s_d_ids, s_la_ids = t1 + t2, l1 + l2, d1 + d2, la1 + la2
+            t_texts, t_labels, t_d_ids, t_la_ids = load_amazon_split("english", "all", "train", max_samples=BASE_TRAIN * 2, unlabeled=True)
+            s_loader = make_dataloader(s_texts, s_labels, s_d_ids, s_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+            t_loader = make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+            
+            model_mb_dann = train_dann(model_mb_dann, tokenizer_mbert, s_loader, t_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device)
+            torch.save(model_mb_dann.state_dict(), checkpoint_mb_dann)
+            
+        test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
+        test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE)
+        res_mb_s2 = evaluate_model(model_mb_dann, test_loader, device, "mBERT_S2_DANN")
+        save_results(res_mb_s2, "results/results_mbert_s2.json")
+
+        # 3. mBERT S7 (Unified Framework)
+        print_banner("mBERT Scenario 7 (Unified Framework)")
+        model_mb_unified = UnifiedFrameworkModel(mbert_name)
+        checkpoint_mb_unified = "checkpoints/model_mbert_s7_unified.pt"
+        if os.path.exists(checkpoint_mb_unified):
+            model_mb_unified.load_state_dict(torch.load(checkpoint_mb_unified, map_location=device))
+        else:
+            t1, l1, d1, la1 = load_imdb("train", max_samples=BASE_TRAIN)
+            t2, l2, d2, la2 = load_yelp("train", max_samples=BASE_TRAIN)
+            t3, l3, d3, la3 = load_amazon_split("english", "all", "train", max_samples=BASE_TRAIN)
+            t_vi, l_vi, d_vi, la_vi = load_vsfc("train", max_samples=BASE_TRAIN, unlabeled=True)
+            t_all = t1 + t2 + t3 + t_vi
+            l_all = l1 + l2 + l3 + l_vi
+            d_all = d1 + d2 + d3 + d_vi
+            la_all = la1 + la2 + la3 + la_vi
+            train_loader = make_dataloader(t_all, l_all, d_all, la_all, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+            
+            model_mb_unified = train_multitask(model_mb_unified, tokenizer_mbert, train_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device)
+            torch.save(model_mb_unified.state_dict(), checkpoint_mb_unified)
+            
+        test_loader_vi = make_dataloader(test_vi_t, test_vi_l, test_vi_d, test_vi_la, tokenizer_mbert, batch_size=BATCH_SIZE)
+        res_mb_s7 = evaluate_model(model_mb_unified, test_loader_vi, device, "mBERT_S7_Unified")
+        save_results(res_mb_s7, "results/results_mbert_s7.json")
 
     print_banner("ALL EXPERIMENTS COMPLETED")
     generate_aggregate_report()

@@ -35,11 +35,11 @@ Bạn có thể chạy toàn bộ kịch bản hoặc từng kịch bản riêng
 
 ## 📊 Cấu trúc thực nghiệm (Narrative)
 
-Hệ thống được thiết kế theo 3 giai đoạn nghiên cứu:
+Hệ thống được thiết kế theo 3 giai đoạn nghiên cứu tăng dần về độ khó:
 
-1.  **Phase 1 (RQ1 - Domain Shift):** So sánh giữa Transfer Learning, Domain Adaptation (DANN) và Multi-task Learning.
-2.  **Phase 2 (RQ2 - Language Shift):** So sánh giữa Zero-shot Cross-lingual, Few-shot Fine-tuning và Translation-based methods.
-3.  **Phase 3 (RQ3 - Combined Shift):** Sử dụng **Unified S+D+L Framework** để giải quyết đồng thời mọi sự dịch chuyển.
+1.  **Phase 1 (RQ1 - Domain Robustness):** Tập trung vào khả năng chống chịu của mô hình trước sự thay đổi miền dữ liệu (IMDb -> Amazon). S1 được thiết lập làm mốc **Zero-shot Domain Transfer**.
+2.  **Phase 2 (RQ2 - Multilingual Robustness):** Mở rộng từ sự ổn định về miền sang sự ổn định về ngôn ngữ (EN -> VI). Các kịch bản được thực hiện để đo lường khả năng chuyển đổi tri thức cross-lingual.
+3.  **Phase 3 (RQ3 - Unified Robustness Framework):** Kết hợp đồng thời mọi yếu tố dịch chuyển vào một khung mô hình hợp nhất duy nhất để đạt được độ "Robust" tối đa.
 
 ## 🛠️ Yêu cầu hệ thống
 - Python 3.8+
