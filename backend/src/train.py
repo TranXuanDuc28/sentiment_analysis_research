@@ -155,7 +155,9 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             correct, total = 0, 0
             with torch.no_grad():
                 for b in val_loader:
-                    out, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                    # Robust unpacking for validation
+                    outputs = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                    out = outputs[0] if isinstance(outputs, (tuple, list)) else outputs
                     val_loss += s_criterion(out, b["labels"].to(device)).item()
                     preds = torch.argmax(out, dim=1)
                     correct += (preds == b["labels"].to(device)).sum().item()
@@ -250,7 +252,9 @@ def train_multitask(model, tokenizer, train_loader, val_loader=None, num_epochs=
             correct, total = 0, 0
             with torch.no_grad():
                 for b in val_loader:
-                    s_lgt, _, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                    # Robust unpacking for validation
+                    outputs = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                    s_lgt = outputs[0] if isinstance(outputs, (tuple, list)) else outputs
                     
                     v_valid = b["labels"] >= 0
                     if v_valid.sum() > 0:

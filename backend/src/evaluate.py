@@ -38,7 +38,9 @@ def evaluate_model(model, dataloader, device="cuda", scenario_name="Unknown"):
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
 
-            s_logits, _ = model(input_ids, attention_mask)
+            # Robust unpacking: Take the first output (sentiment logits) regardless of how many values are returned
+            outputs = model(input_ids, attention_mask)
+            s_logits = outputs[0] if isinstance(outputs, (tuple, list)) else outputs
             preds = torch.argmax(s_logits, dim=-1)
 
             all_preds.extend(preds.cpu().numpy())
