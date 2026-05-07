@@ -390,12 +390,45 @@ def main():
         save_results(res_s10b, "results/results_s10b.json")
 
     # --- S11: Model Comparison (mBERT vs XLM-R) ---
-    if args.s in ["0", "11", "11a", "11b"] and config["scenarios"].get("run_s11", True):
+    if args.s in ["0", "11", "11a", "11b", "11c", "11d"] and config["scenarios"].get("run_s11", True):
         mbert_name = "bert-base-multilingual-cased"
         tokenizer_mbert = AutoTokenizer.from_pretrained(mbert_name)
 
+        model_mbert_base = BaseModel(mbert_name)
+        checkpoint_base = "checkpoints/model_mbert_imdb.pt"
+        
+        # S11_base / S11c / S11d require a trained base mBERT on IMDb
+        if args.s in ["0", "11", "11c", "11d"]:
+            if os.path.exists(checkpoint_base):
+                model_mbert_base.load_state_dict(torch.load(checkpoint_base, map_location=device))
+            else:
+                print_banner("Scenario 11_base: Train mBERT on IMDb for Zero-Shot Comparison")
+                t_all, l_all, d_all, la_all = load_imdb("train", max_samples=BASE_TRAIN)
+                t_train, t_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
+                
+                train_loader = make_dataloader(t_train, l_train, d_train, la_train, tokenizer_mbert, batch_size=BATCH_SIZE, shuffle=True)
+                val_loader = make_dataloader(t_val, l_val, d_val, la_val, tokenizer_mbert, batch_size=BATCH_SIZE)
+                
+                weights = compute_class_weights(l_train)
+                model_mbert_base = train_model(model_mbert_base, tokenizer_mbert, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR, device=device, class_weights=weights)
+                torch.save(model_mbert_base.state_dict(), checkpoint_base)
+
+        if args.s in ["0", "11", "11c"]:
+            print_banner("Scenario 11c: mBERT on S4 task (Zero-Shot IMDb -> Amazon)")
+            test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
+            test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer_mbert, batch_size=BATCH_SIZE)
+            res_s11c = evaluate_model(model_mbert_base, test_loader, device, "S11c_ModelComp_mBERT_ZeroShot_Amazon")
+            save_results(res_s11c, "results/results_s11c.json")
+
+        if args.s in ["0", "11", "11d"]:
+            print_banner("Scenario 11d: mBERT on S2 task (Zero-Shot IMDb -> VSFC)")
+            test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=BASE_TEST)
+            test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer_mbert, batch_size=BATCH_SIZE)
+            res_s11d = evaluate_model(model_mbert_base, test_loader_vi, device, "S11d_ModelComp_mBERT_ZeroShot_VSFC")
+            save_results(res_s11d, "results/results_s11d.json")
+
         if args.s in ["0", "11", "11a"]:
-            print_banner("Scenario 11a: mBERT on S6b task (IMDb+Yelp -> Amazon)")
+            print_banner("Scenario 11a: mBERT on S6b task (IMDb+Yelp -> Amazon DANN)")
             t1, l1, d1, la1 = load_imdb("train", max_samples=BASE_TRAIN)
             t2, l2, d2, la2 = load_yelp("train", max_samples=BASE_TRAIN)
             s_texts, s_labels, s_d_ids, s_la_ids = t1 + t2, l1 + l2, d1 + d2, la1 + la2
@@ -411,6 +444,8 @@ def main():
             if os.path.exists(checkpoint_path):
                 model_mbert.load_state_dict(torch.load(checkpoint_path, map_location=device))
             else:
+                if os.path.exists(checkpoint_base):
+                    model_mbert.load_state_dict(torch.load(checkpoint_base, map_location=device), strict=False)
                 weights = compute_class_weights(l_train)
                 model_mbert = train_dann(model_mbert, tokenizer_mbert, s_loader, t_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
                 torch.save(model_mbert.state_dict(), checkpoint_path)
@@ -421,7 +456,7 @@ def main():
             save_results(res_s11a, "results/results_s11a.json")
 
         if args.s in ["0", "11", "11b"]:
-            print_banner("Scenario 11b: mBERT on S10b task (IMDb+Yelp -> VSFC)")
+            print_banner("Scenario 11b: mBERT on S10b task (IMDb+Yelp -> VSFC DANN)")
             t1, l1, d1, la1 = load_imdb("train", max_samples=BASE_TRAIN)
             t2, l2, d2, la2 = load_yelp("train", max_samples=BASE_TRAIN)
             s_texts, s_labels, s_d_ids, s_la_ids = t1 + t2, l1 + l2, d1 + d2, la1 + la2
@@ -437,6 +472,8 @@ def main():
             if os.path.exists(checkpoint_path):
                 model_mbert_vi.load_state_dict(torch.load(checkpoint_path, map_location=device))
             else:
+                if os.path.exists(checkpoint_base):
+                    model_mbert_vi.load_state_dict(torch.load(checkpoint_base, map_location=device), strict=False)
                 weights = compute_class_weights(l_train)
                 model_mbert_vi = train_dann(model_mbert_vi, tokenizer_mbert, s_loader, t_loader_vi, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
                 torch.save(model_mbert_vi.state_dict(), checkpoint_path)
