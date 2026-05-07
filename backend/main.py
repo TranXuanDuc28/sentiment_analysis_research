@@ -238,7 +238,7 @@ def main():
             t_texts, t_labels, t_d_ids, t_la_ids = load_amazon_split("english", "all", "train", BASE_TRAIN*2, unlabeled=True)
             model_mb = DANNModel(mbert_name)
             if not os.path.exists("checkpoints/model_s10_mbert_dann.pt"):
-                model_mb = train_dann(model_mb, tokenizer_mb, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer_mb, BATCH_SIZE, True), make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer_mb, BATCH_SIZE, True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer_mb, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights(l_tr))
+                model_mb = train_dann(model_mb, tokenizer_mb, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer_mb, batch_size=BATCH_SIZE, shuffle=True), make_dataloader(t_texts, t_labels, t_d_ids, t_la_ids, tokenizer_mb, batch_size=BATCH_SIZE, shuffle=True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer_mb, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights(l_tr))
                 torch.save(model_mb.state_dict(), "checkpoints/model_s10_mbert_dann.pt")
             else: model_mb.load_state_dict(torch.load("checkpoints/model_s10_mbert_dann.pt", device))
             tt, tl, td, tla = load_amazon_split("english", "all", "test", BASE_TEST)
@@ -252,7 +252,7 @@ def main():
             t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2, l1+l2, d1+d2, la1+la2, test_size=0.2, random_state=42)
             model_mb = BaseModel(mbert_name)
             if not os.path.exists("checkpoints/model_s11_mbert_src.pt"):
-                model_mb = train_model(model_mb, tokenizer_mb, make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer_mb, BATCH_SIZE, True), make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer_mb, BATCH_SIZE), EPOCHS, LR, device, compute_class_weights(l_tr))
+                model_mb = train_model(model_mb, tokenizer_mb, make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer_mb, batch_size=BATCH_SIZE, shuffle=True), make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer_mb, BATCH_SIZE), EPOCHS, LR, device, compute_class_weights(l_tr))
                 torch.save(model_mb.state_dict(), "checkpoints/model_s11_mbert_src.pt")
             else: model_mb.load_state_dict(torch.load("checkpoints/model_s11_mbert_src.pt", device))
             tt, tl, td, tla = load_vsfc("test", BASE_TEST)
