@@ -80,7 +80,7 @@ class AdvancedMultiTaskModel(nn.Module):
     Sử dụng Gradient Reversal Layer (GRL) để xóa bỏ ranh giới miền và ngôn ngữ.
     """
     def __init__(self, model_name="xlm-roberta-base", num_labels=2, num_domains=6, num_languages=2):
-        super(UnifiedFrameworkModel, self).__init__()
+        super(AdvancedMultiTaskModel, self).__init__()
         self.encoder = AutoModel.from_pretrained(model_name)
         
         # Sentiment Head (Task chính)
