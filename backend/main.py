@@ -156,7 +156,7 @@ def main():
         t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, test_size=0.2, random_state=42)
         model = BaseModel(config["model"]["name"])
         if not os.path.exists("checkpoints/model_s6_joint.pt"):
-            model = train_model(model, tokenizer, make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True), make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR, device, compute_class_weights(l_tr))
+            model = train_model(model, tokenizer, make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer, batch_size=BATCH_SIZE, shuffle=True), make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR, device, compute_class_weights(l_tr))
             torch.save(model.state_dict(), "checkpoints/model_s6_joint.pt")
         else: model.load_state_dict(torch.load("checkpoints/model_s6_joint.pt", device))
         tt, tl, td, tla = load_vsfc("test", BASE_TEST)
@@ -214,7 +214,7 @@ def main():
                                          num_domains=config["model"]["num_domains"], 
                                          num_languages=config["model"]["num_languages"])
         if not os.path.exists("checkpoints/model_s9_multitask.pt"):
-            model_mt = train_multitask(model_mt, tokenizer, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights([lbl for lbl in l_tr if lbl >= 0]))
+            model_mt = train_multitask(model_mt, tokenizer, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, batch_size=BATCH_SIZE, shuffle=True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights([lbl for lbl in l_tr if lbl >= 0]))
             torch.save(model_mt.state_dict(), "checkpoints/model_s9_multitask.pt")
         else: model_mt.load_state_dict(torch.load("checkpoints/model_s9_multitask.pt", device))
         tt, tl, td, tla = load_vsfc("test", BASE_TEST)
