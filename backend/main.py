@@ -10,8 +10,8 @@ if sys.platform == "win32":
 from transformers import AutoTokenizer
 from sklearn.model_selection import train_test_split
 from src.dataset import load_amazon_split, load_vsfc, load_yelp, load_imdb, make_dataloader
-from src.model import BaseModel, DANNModel
-from src.train import train_model, train_dann, compute_class_weights
+from src.model import BaseModel, DANNModel, AdvancedMultiTaskModel
+from src.train import train_model, train_dann, train_multitask, compute_class_weights
 from src.evaluate import evaluate_model
 from src.visualize_embeddings import visualize_tsne
 from src.report_generator import generate_aggregate_report
@@ -19,7 +19,7 @@ from src.utils import print_banner, save_results, set_seed
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--s", type=str, default="0", help="Scenario to run (0=all, 1a, 1b, 2, 3, 4, 5, 6a, 6b, 7, 8, 9)")
+    parser.add_argument("--s", type=str, default="0", help="Scenario to run (0=all, 1a, 1b, 2, 3, 4, 5, 6a, 6b, 7, 8, 9, 10, 11, 12, 13, 14)")
     args = parser.parse_args()
 
     with open("config.yaml", "r", encoding="utf-8") as f:
@@ -545,6 +545,129 @@ def main():
             test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer_mbert, batch_size=BATCH_SIZE)
             res_s11b = evaluate_model(model_mbert_vi, test_loader_vi, device, "S11b_ModelComp_mBERT_VSFC")
             save_results(res_s11b, "results/results_s11b.json")
+
+    # --- S12: Cross-lingual Target Fine-Tuning (IMDb -> 500 VSFC) ---
+    if args.s in ["0", "12"]:
+        print_banner("Scenario 12: Cross-lingual Target Fine-Tuning (IMDb -> 500 VSFC)")
+        model = BaseModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_imdb.pt"):
+            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
+        else:
+            print("⚠️ Cần chạy S1a trước để có mô hình IMDb.")
+        
+        # Load 500 labeled VSFC samples for fine-tuning
+        t_vsfc, l_vsfc, d_vsfc, la_vsfc = load_vsfc("train", max_samples=500)
+        train_loader = make_dataloader(t_vsfc, l_vsfc, d_vsfc, la_vsfc, tokenizer, batch_size=8, shuffle=True)
+        
+        checkpoint_path = "checkpoints/model_sft_s12.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            # Fine-tune with very low LR
+            model = train_model(model, tokenizer, train_loader, num_epochs=3, lr=5e-6, device=device)
+            torch.save(model.state_dict(), checkpoint_path)
+        
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        res_s12 = evaluate_model(model, test_loader_vi, device, "S12_SFT_IMDb_VSFC")
+        save_results(res_s12, "results/results_s12.json")
+
+    # --- S13: Translation-Based Cross-lingual Methods (VSFC translated to English) ---
+    if args.s in ["0", "13"]:
+        print_banner("Scenario 13: Translation-Based Methods (VSFC -> English -> IMDb Model)")
+        model = BaseModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_imdb.pt"):
+            model.load_state_dict(torch.load("checkpoints/model_imdb.pt", map_location=device))
+        else:
+            print("⚠️ Cần chạy S1a trước.")
+            
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
+        
+        print("🌍 Đang dịch dữ liệu test từ Tiếng Việt sang Tiếng Anh bằng deep-translator...")
+        try:
+            from deep_translator import GoogleTranslator
+            translator = GoogleTranslator(source='vi', target='en')
+            test_texts_translated = []
+            from tqdm import tqdm
+            for text in tqdm(test_texts_vi, desc="Translating"):
+                try:
+                    # Giới hạn 5000 ký tự cho mỗi API call của GoogleTranslator
+                    trans = translator.translate(text[:4999])
+                    test_texts_translated.append(trans if trans else "")
+                except Exception as e:
+                    test_texts_translated.append(text) # Fallback to original
+        except ImportError:
+            print("⚠️ Vui lòng cài đặt thư viện: pip install deep-translator")
+            test_texts_translated = test_texts_vi
+            
+        test_loader_trans = make_dataloader(test_texts_translated, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        res_s13 = evaluate_model(model, test_loader_trans, device, "S13_Translation_VSFC_EN")
+        save_results(res_s13, "results/results_s13.json")
+
+    # --- S14: Advanced Multi-task Learning (Sentiment + Domain + Language) ---
+    if args.s in ["0", "14"]:
+        print_banner("Scenario 14: Unified Multi-task Learning Framework (S+D+L)")
+        # Lấy dữ liệu tiếng Anh (IMDb + Yelp)
+        t_en1, l_en1, d_en1, la_en1 = load_imdb("train", max_samples=MAX_TRAIN//2)
+        t_en2, l_en2, d_en2, la_en2 = load_yelp("train", max_samples=MAX_TRAIN//2)
+        
+        # Lấy dữ liệu tiếng Việt (VSFC) Unlabeled cho Cross-lingual
+        t_vi, l_vi, d_vi, la_vi = load_vsfc("train", max_samples=MAX_TRAIN, unlabeled=True)
+        
+        # Trộn tất cả lại
+        t_all = t_en1 + t_en2 + t_vi
+        l_all = l_en1 + l_en2 + l_vi
+        d_all = d_en1 + d_en2 + d_vi
+        la_all = la_en1 + la_en2 + la_vi
+        
+        s_train, s_val, l_train, l_val, d_train, d_val, la_train, la_val = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
+        
+        train_loader = make_dataloader(s_train, l_train, d_train, la_train, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+        val_loader = make_dataloader(s_val, l_val, d_val, la_val, tokenizer, batch_size=BATCH_SIZE)
+        
+        model_mtl = AdvancedMultiTaskModel(config["model"]["name"])
+        checkpoint_path = "checkpoints/model_s14_multitask.pt"
+        if os.path.exists(checkpoint_path):
+            print(f"🚀 Found checkpoint {checkpoint_path}, loading...")
+            model_mtl.load_state_dict(torch.load(checkpoint_path, map_location=device))
+        else:
+            if os.path.exists("checkpoints/model_s5_multidomain.pt"):
+                model_mtl.load_state_dict(torch.load("checkpoints/model_s5_multidomain.pt", map_location=device), strict=False)
+            
+            # Tính class weight chỉ dựa trên các nhãn hợp lệ
+            weights = compute_class_weights([lbl for lbl in l_train if lbl >= 0])
+            model_mtl = train_multitask(model_mtl, tokenizer, train_loader, val_loader=val_loader, num_epochs=EPOCHS, lr=LR/10.0, device=device, class_weights=weights)
+            torch.save(model_mtl.state_dict(), checkpoint_path)
+            
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", max_samples=MAX_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, batch_size=BATCH_SIZE)
+        
+        # Hàm đánh giá cho S14 cần bóc tách s_logits
+        model_mtl.eval()
+        model_mtl.to(device)
+        correct, total = 0, 0
+        from sklearn.metrics import classification_report
+        all_preds = []
+        all_labels = []
+        with torch.no_grad():
+            for b in test_loader_vi:
+                s_lgt, _, _ = model_mtl(b["input_ids"].to(device), b["attention_mask"].to(device))
+                preds = torch.argmax(s_lgt, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(b["labels"].cpu().numpy())
+                correct += (preds == b["labels"].to(device)).sum().item()
+                total += b["labels"].size(0)
+        
+        acc = correct / total
+        print(f"\n[S14] Accuracy: {acc*100:.2f}%")
+        
+        res_s14 = {
+            "scenario": "S14_Advanced_MultiTask",
+            "accuracy": acc,
+            "report": classification_report(all_labels, all_preds, output_dict=True)
+        }
+        save_results(res_s14, "results/results_s14.json")
 
     print_banner("ALL EXPERIMENTS COMPLETED")
     try:

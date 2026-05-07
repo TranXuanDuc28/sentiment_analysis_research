@@ -19,3 +19,4 @@ python-multipart
 motor
 dnspython
 beautifulsoup4
+deep-translator

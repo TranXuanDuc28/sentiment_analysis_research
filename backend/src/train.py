@@ -165,3 +165,104 @@ def train_dann(model, tokenizer, source_loader, target_loader, val_loader=None, 
             if early_stopping.early_stop:
                 break
     return model
+
+def train_multitask(model, tokenizer, train_loader, val_loader=None, num_epochs=3, lr=2e-5, device="cpu", class_weights=None):
+    from src.utils import EarlyStopping
+    model.to(device)
+    
+    optimizer_grouped_parameters = [
+        {"params": model.encoder.parameters(), "lr": lr},
+        {"params": model.sentiment_head.parameters(), "lr": lr * 10},
+        {"params": model.domain_head.parameters(), "lr": lr * 10},
+        {"params": model.language_head.parameters(), "lr": lr * 10}
+    ]
+    optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
+    
+    s_criterion = nn.CrossEntropyLoss(weight=class_weights.to(device) if class_weights is not None else None)
+    d_criterion = nn.CrossEntropyLoss()
+    l_criterion = nn.CrossEntropyLoss()
+    
+    early_stopping = EarlyStopping(patience=3)
+    
+    total_steps = num_epochs * len(train_loader)
+    current_step = 0
+    
+    # Lambda weights for losses
+    lambda_s = 1.0
+    lambda_d = 0.1
+    lambda_l = 0.1
+    
+    for epoch in range(1, num_epochs + 1):
+        model.train()
+        epoch_s_loss = 0
+        epoch_d_loss = 0
+        epoch_l_loss = 0
+        
+        pbar = tqdm(train_loader, desc=f"MultiTask Epoch {epoch}")
+        for batch in pbar:
+            # Prepare Lambda for GRL (increases from 0 to 1)
+            p = float(current_step) / total_steps
+            lambd = (2. / (1. + np.exp(-10 * p)) - 1) * 0.1
+            
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            s_labels = batch["labels"].to(device)
+            d_labels = batch["domain_ids"].to(device)
+            l_labels = batch["language_ids"].to(device)
+            
+            optimizer.zero_grad()
+            
+            # Forward pass (using GRL to make representations domain-invariant and language-invariant)
+            s_logits, d_logits, l_logits = model(input_ids, attention_mask, alpha_domain=lambd, alpha_language=lambd)
+            
+            # Tính toán các loss
+            # Đối với unlabeled target (nhãn sentiment = -1), ta lọc ra các mẫu có nhãn để tính sentiment loss
+            valid_idx = s_labels >= 0
+            if valid_idx.sum() > 0:
+                loss_s = s_criterion(s_logits[valid_idx], s_labels[valid_idx])
+            else:
+                loss_s = torch.tensor(0.0).to(device)
+                
+            loss_d = d_criterion(d_logits, d_labels)
+            loss_l = l_criterion(l_logits, l_labels)
+            
+            # Total Loss
+            total_loss = lambda_s * loss_s + lambda_d * loss_d + lambda_l * loss_l
+            
+            # Backward
+            total_loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+            
+            epoch_s_loss += loss_s.item()
+            epoch_d_loss += loss_d.item()
+            epoch_l_loss += loss_l.item()
+            current_step += 1
+            
+            pbar.set_postfix(s_loss=f"{epoch_s_loss:.4f}", d_loss=f"{epoch_d_loss:.4f}", l_loss=f"{epoch_l_loss:.4f}")
+
+        if val_loader:
+            model.eval()
+            val_loss = 0
+            correct, total = 0, 0
+            with torch.no_grad():
+                for b in val_loader:
+                    s_lgt, _, _ = model(b["input_ids"].to(device), b["attention_mask"].to(device))
+                    
+                    v_valid = b["labels"] >= 0
+                    if v_valid.sum() > 0:
+                        loss = s_criterion(s_lgt[v_valid], b["labels"][v_valid].to(device))
+                        val_loss += loss.item()
+                        
+                        preds = torch.argmax(s_lgt[v_valid], dim=1)
+                        correct += (preds == b["labels"][v_valid].to(device)).sum().item()
+                        total += v_valid.sum().item()
+            
+            if total > 0:
+                avg_val_loss = val_loss / len(val_loader)
+                val_acc = 100 * correct / total
+                print(f" > MultiTask Epoch {epoch} - Val Loss: {avg_val_loss:.4f} - Val Acc: {val_acc:.2f}%")
+                early_stopping(avg_val_loss)
+                if early_stopping.early_stop:
+                    break
+    return model
