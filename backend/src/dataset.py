@@ -27,7 +27,9 @@ LANG_MAP = {
     "en": 0,
     "english": 0,
     "vi": 1,
-    "vietnamese": 1
+    "vietnamese": 1,
+    "fr": 2,
+    "french": 2
 }
 
 def rating_to_sentiment_amazon(rating: int) -> int:
@@ -67,7 +69,13 @@ class SentimentDataset(Dataset):
         }
 
 def load_amazon_split(language, domain, split="train", max_samples=None, unlabeled=False):
-    lang_code = "en" if language == "english" else "vi"
+    if language.lower() in ["english", "en"]:
+        lang_code = "en"
+    elif language.lower() in ["french", "fr"]:
+        lang_code = "fr"
+    else:
+        lang_code = "vi"
+        
     lang_id = LANG_MAP.get(lang_code, 0)
     
     # Kiểm tra linh hoạt các đường dẫn file

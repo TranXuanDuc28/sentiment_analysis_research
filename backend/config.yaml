@@ -6,7 +6,7 @@ model:
   mbert: "bert-base-multilingual-cased"
   num_labels: 2
   num_domains: 6
-  num_languages: 2
+  num_languages: 3
 
 training:
   epochs: 10         

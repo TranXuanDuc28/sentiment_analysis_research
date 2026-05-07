@@ -73,7 +73,9 @@ def main():
         s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
         tr_ld = make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
         vl_ld = make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, batch_size=BATCH_SIZE)
-        model_mt = AdvancedMultiTaskModel(config["model"]["name"])
+        model_mt = AdvancedMultiTaskModel(config["model"]["name"], 
+                                         num_domains=config["model"]["num_domains"], 
+                                         num_languages=config["model"]["num_languages"])
         if not os.path.exists("checkpoints/model_s2_mtl.pt"):
             w = compute_class_weights([lbl for lbl in l_tr if lbl >= 0])
             model_mt = train_multitask(model_mt, tokenizer, tr_ld, vl_ld, EPOCHS, LR/10.0, device, w)
@@ -208,7 +210,9 @@ def main():
         d_all = d1+d2+d3+d_vi
         la_all = la1+la2+la3+la_vi
         s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_all, l_all, d_all, la_all, test_size=0.1, random_state=42)
-        model_mt = AdvancedMultiTaskModel(config["model"]["name"])
+        model_mt = AdvancedMultiTaskModel(config["model"]["name"], 
+                                         num_domains=config["model"]["num_domains"], 
+                                         num_languages=config["model"]["num_languages"])
         if not os.path.exists("checkpoints/model_s9_multitask.pt"):
             model_mt = train_multitask(model_mt, tokenizer, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights([lbl for lbl in l_tr if lbl >= 0]))
             torch.save(model_mt.state_dict(), "checkpoints/model_s9_multitask.pt")
