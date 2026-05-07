@@ -41,7 +41,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
 
     # =========================================================================
-    # PHASE 1: DOMAIN ROBUSTNESS (RQ1)
+    # PHASE 1: MULTIDOMAIN ANALYSIS (RQ1)
     # =========================================================================
 
     # --- S1: Zero-shot Domain Transfer (IMDb -> Amazon) ---
@@ -234,7 +234,7 @@ def main():
     # =========================================================================
     # MODEL COMPARISON (XLM-R vs mBERT)
     # =========================================================================
-    if config["scenarios"].get("run_comparison", True):
+    if args.s in ["0", "comp"] and config["scenarios"].get("run_comparison", True):
         print_banner("MODEL COMPARISON: XLM-R vs mBERT")
         mbert_name = config["model"]["mbert"]
         tokenizer_mbert = AutoTokenizer.from_pretrained(mbert_name)
