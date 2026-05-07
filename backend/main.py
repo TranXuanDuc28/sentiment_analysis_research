@@ -16,6 +16,7 @@ from src.train import train_model, train_dann, train_multitask, compute_class_we
 from src.evaluate import evaluate_model
 from src.visualize_embeddings import visualize_tsne
 from src.report_generator import generate_aggregate_report
+from src.demo_plotter import generate_demo_plot
 from src.utils import print_banner, save_results, set_seed
 
 def main():
@@ -95,13 +96,18 @@ def main():
         model_dn = DANNModel(config["model"]["name"])
         if not os.path.exists("checkpoints/model_s3_dann.pt"):
             if os.path.exists("checkpoints/model_s1_multidomain.pt"):
-                model_dn.load_state_dict(torch.load("checkpoints/model_s1_multidomain.pt", device), strict=False)
+                model_dann.load_state_dict(torch.load("checkpoints/model_s1_multidomain.pt", device), strict=False)
             w = compute_class_weights(l_tr)
-            model_dn = train_dann(model_dn, tokenizer, s_ld, t_ld, v_ld, EPOCHS, LR/10.0, device, w)
-            torch.save(model_dn.state_dict(), "checkpoints/model_s3_dann.pt")
-        else: model_dn.load_state_dict(torch.load("checkpoints/model_s3_dann.pt", device))
-        tt, tl, td, tla = load_amazon_split("english", "all", "test", BASE_TEST)
-        save_results(evaluate_model(model_dn, make_dataloader(tt, tl, td, tla, tokenizer, BATCH_SIZE), device, "S3_MD_DANN"), "results/results_s3.json")
+            model_dann = train_dann(model_dann, tokenizer, s_loader, t_loader, v_ld, EPOCHS, LR/10.0, device, w)
+            torch.save(model_dann.state_dict(), "checkpoints/model_s3_dann.pt")
+        else: model_dann.load_state_dict(torch.load("checkpoints/model_s3_dann.pt", device))
+        test_texts, test_labels, test_d_ids, test_la_ids = load_amazon_split("english", "all", "test", max_samples=BASE_TEST)
+        test_loader = make_dataloader(test_texts, test_labels, test_d_ids, test_la_ids, tokenizer, batch_size=BATCH_SIZE)
+        res_s3 = evaluate_model(model_dann, test_loader, device, "S3_Multidomain_DANN")
+        save_results(res_s3, "results/results_s3.json")
+        
+        # Vẽ t-SNE cho S3
+        visualize_tsne(model_dann, tokenizer, [s_loader, t_loader], ["Source (IMDb+Yelp)", "Target (Amazon)"], device, "S3_Multidomain_Alignment")
 
     # =========================================================================
     # CHẶNG 2: THÁCH THỨC ĐA NGÔN NGỮ (MULTILINGUAL ANALYSIS)
@@ -176,13 +182,19 @@ def main():
         s_texts, s_labels, s_d_ids, s_la_ids = t1+t2+t3, l1+l2+l3, d1+d2+d3, la1+la2+la3
         t_vi, l_vi, d_vi, la_vi = load_vsfc("train", BASE_TRAIN*3, unlabeled=True)
         s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(s_texts, s_labels, s_d_ids, s_la_ids, 0.2, 42)
+        s_ld = make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True)
+        t_ld = make_dataloader(t_vi, l_vi, d_vi, la_vi, tokenizer, BATCH_SIZE, True)
         model_dn = DANNModel(config["model"]["name"])
         if not os.path.exists("checkpoints/model_s8_unified_dann.pt"):
-            model_dn = train_dann(model_dn, tokenizer, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer, BATCH_SIZE, True), make_dataloader(t_vi, l_vi, d_vi, la_vi, tokenizer, BATCH_SIZE, True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights(l_tr))
+            model_dn = train_dann(model_dn, tokenizer, s_ld, t_ld, make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights(l_tr))
             torch.save(model_dn.state_dict(), "checkpoints/model_s8_unified_dann.pt")
         else: model_dn.load_state_dict(torch.load("checkpoints/model_s8_unified_dann.pt", device))
-        tt, tl, td, tla = load_vsfc("test", BASE_TEST)
-        save_results(evaluate_model(model_dn, make_dataloader(tt, tl, td, tla, tokenizer, BATCH_SIZE), device, "S8_UN_DANN"), "results/results_s8.json")
+        test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi = load_vsfc("test", BASE_TEST)
+        test_loader_vi = make_dataloader(test_texts_vi, test_labels_vi, test_d_ids_vi, test_la_ids_vi, tokenizer, BATCH_SIZE)
+        save_results(evaluate_model(model_dn, test_loader_vi, device, "S8_UN_DANN"), "results/results_s8.json")
+        
+        # Vẽ t-SNE cho S8
+        visualize_tsne(model_dn, tokenizer, [s_ld, t_ld], ["Source (EN+FR+Yelp)", "Target (Vietnamese)"], device, "S8_Unified_Alignment")
 
     # --- S9: Unified Multi-task Framework ---
     if args.s in ["0", "9"]:
@@ -250,16 +262,24 @@ def main():
             t3, l3, d3, la3 = load_amazon_split("french", "all", "train", BASE_TRAIN)
             s_tr, s_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t1+t2+t3, l1+l2+l3, d1+d2+d3, la1+la2+la3, 0.2, 42)
             t_vi, l_vi, d_vi, la_vi = load_vsfc("train", BASE_TRAIN*3, unlabeled=True)
+            s_ld = make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer_mb, BATCH_SIZE, True)
+            t_ld = make_dataloader(t_vi, l_vi, d_vi, la_vi, tokenizer_mb, BATCH_SIZE, True)
             model_mb = DANNModel(mbert_name)
             if not os.path.exists("checkpoints/model_s12_mbert_unified.pt"):
-                model_mb = train_dann(model_mb, tokenizer_mb, make_dataloader(s_tr, l_tr, d_tr, la_tr, tokenizer_mb, BATCH_SIZE, True), make_dataloader(t_vi, l_vi, d_vi, la_vi, tokenizer_mb, BATCH_SIZE, True), make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer_mb, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights(l_tr))
+                model_mb = train_dann(model_mb, tokenizer_mb, s_ld, t_ld, make_dataloader(s_vl, l_vl, d_vl, la_vl, tokenizer_mb, BATCH_SIZE), EPOCHS, LR/10.0, device, compute_class_weights(l_tr))
                 torch.save(model_mb.state_dict(), "checkpoints/model_s12_mbert_unified.pt")
             else: model_mb.load_state_dict(torch.load("checkpoints/model_s12_mbert_unified.pt", device))
             tt, tl, td, tla = load_vsfc("test", BASE_TEST)
-            save_results(evaluate_model(model_mb, make_dataloader(tt, tl, td, tla, tokenizer_mb, BATCH_SIZE), device, "S12_mBERT_UN"), "results/results_s12.json")
+            ld = make_dataloader(tt, tl, td, tla, tokenizer_mb, BATCH_SIZE)
+            save_results(evaluate_model(model_mb, ld, device, "S12_mBERT_UN"), "results/results_s12.json")
+            
+            # Vẽ t-SNE cho S12 (để so sánh với S8)
+            visualize_tsne(model_mb, tokenizer_mb, [s_ld, t_ld], ["Source (mBERT)", "Target (Vietnamese)"], device, "S12_mBERT_Unified_Alignment")
 
     print_banner("ALL EXPERIMENTS COMPLETED")
-    try: generate_aggregate_report()
+    try: 
+        generate_aggregate_report()
+        generate_demo_plot()
     except Exception as e: print(f"⚠️ Error: {e}")
 
 if __name__ == "__main__":

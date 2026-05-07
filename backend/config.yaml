@@ -1,36 +1,27 @@
-# Configuration Optimized for Research Narrative
-# Phase 1: Multidomain | Phase 2: Multilingual | Phase 3: Combined
+# Configuration for 12-Scenario Research Roadmap
+# Phase 1: Multidomain | Phase 2: Multilingual | Phase 3: Unified | Phase 4: Ablation
 
 model:
   name: "xlm-roberta-base"
   mbert: "bert-base-multilingual-cased"
   num_labels: 2
   num_domains: 6
+  num_languages: 2
 
 training:
   epochs: 10         
   batch_size: 16
   learning_rate: 3e-5
   max_length: 128
-  dann_alpha: 1.0
 
 scenarios:
   base_samples_train: 5000  
   base_samples_test: 2000   
   few_shot_samples: 500     
   
-  # --- PHASE 1: DOMAIN ROBUSTNESS ---
-  run_s1: true   # S1 (Zero-shot Domain Transfer: IMDb -> Amazon)
-  run_s2: true   # S2 (Domain Adaptation: IMDb+Yelp -> Amazon)
-  run_s3: true   # S3 (Multi-task Learning: Sentiment + Domain)
-
-  # --- PHASE 2: MULTILINGUAL ROBUSTNESS ---
-  run_s4: true   # S4 (Zero-shot Cross-lingual: EN -> VI)
-  run_s5: true   # S5 (Few-shot Fine-tuning: VI)
-  run_s6: true   # S6 (Translation-Based Baseline)
-
-  # --- PHASE 3: UNIFIED ROBUSTNESS FRAMEWORK ---
-  run_s7: true   # S7 (Unified S+D+L Framework)
-
-  # --- COMPARISON ---
-  run_comparison: true # XLM-R vs mBERT on S4 & S7
+  # Grouping for logic (used by main.py)
+  groups:
+    - "1. Multidomain (S1-S3)"
+    - "2. Multilingual (S4-S6)"
+    - "3. Unified (S7-S9)"
+    - "4. Ablation (S10-S12)"

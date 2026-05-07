@@ -73,7 +73,7 @@ class DANNModel(nn.Module):
         else:
             return s_logits, None
 
-class UnifiedFrameworkModel(nn.Module):
+class AdvancedMultiTaskModel(nn.Module):
     """
     Mô hình Hợp nhất (Unified Framework) cho kịch bản S7.
     Kết hợp: Sentiment Classification + Domain Adaptation + Language Alignment.
