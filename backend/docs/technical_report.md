@@ -22,9 +22,10 @@ Dựa trên mã nguồn và kết quả chạy thực tế, các kỹ thuật sa
 2.  **Early Stopping**: Cơ chế tự động dừng huấn luyện sau 3 epoch không cải thiện để tránh Overfitting (đã kích hoạt thành công ở Epoch 4 của S3).
 3.  **Multi-task Learning (MTL)**: Tích hợp đầu phân loại Miền và Ngôn ngữ cùng với tác vụ Cảm xúc chính.
 4.  **Zero-shot Cross-lingual Transfer**: Khả năng dự đoán cảm xúc trên tiếng Việt dù chỉ được huấn luyện trên tiếng Anh và tiếng Pháp.
-5.  **Few-shot Fine-tuning (S4b)**: Tinh chỉnh mô hình đa ngôn ngữ với một lượng dữ liệu cực nhỏ (500 mẫu) để tối ưu hóa cho ngôn ngữ mục tiêu.
-6.  **Unsupervised Domain Adaptation**: Sử dụng dữ liệu miền đích (Target) không có nhãn để căn chỉnh (Alignment) không gian vector.
-7.  **Adversarial Alignment Visualization**: Sử dụng **t-SNE** để trực quan hóa sự hội tụ của dữ liệu Source và Target.
+5.  **Few-shot Domain Adaptation (S1b)**: Tinh chỉnh mô hình trên một lượng nhỏ dữ liệu của miền mục tiêu để vượt qua rào cản Domain Shift.
+6.  **Few-shot Fine-tuning (S4b)**: Tinh chỉnh mô hình đa ngôn ngữ với một lượng dữ liệu cực nhỏ (500 mẫu) để tối ưu hóa cho ngôn ngữ mục tiêu.
+7.  **Unsupervised Domain Adaptation**: Sử dụng dữ liệu miền đích (Target) không có nhãn để căn chỉnh (Alignment) không gian vector.
+8.  **Adversarial Alignment Visualization**: Sử dụng **t-SNE** để trực quan hóa sự hội tụ của dữ liệu Source và Target.
 
 ---
 
@@ -46,6 +47,12 @@ Dựa trên mã nguồn và kết quả chạy thực tế, các kỹ thuật sa
 ---
 
 ## 5. Phân tích kết quả thực nghiệm (S3)
+| Class | Kịch bản | feature area | Dữ liệu Nguồn | Dữ liệu Đích | Thách thức chính |
+|---|---|---|---|---|---|
+| **S1** | **Baseline Multidomain** | IMDb, Yelp | Amazon (EN) | Domain Shift (Phim -> Thương mại) |
+| **S1b** | **Few-shot MD** | model S1 + 500 Amazon | Amazon (EN) | Vượt qua lệch miền nhờ Fine-tuning |
+| **S2** | **Multi-task MD** | IMDb, Yelp | Amazon (EN) | Học đa nhiệm để tổng quát hóa |
+
 | Class | Precision | Recall | F1-Score | Support |
 |---|---|---|---|---|
 | **0 (Negative)** | 0.87 | 0.93 | 0.90 | 1019 |

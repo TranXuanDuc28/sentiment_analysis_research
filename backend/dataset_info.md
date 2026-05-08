@@ -58,6 +58,7 @@ Hệ thống giới hạn nghiêm ngặt số lượng mẫu thông qua tham s�
 | # | Nhóm| Kịch bản | feature area | Dữ liệu Nguồn | Dữ liệu Đích | Thách thức chính |
 |---|---|---|---|---|
 | **S1** | **Baseline Multidomain** | IMDb, Yelp | Amazon (EN) | Domain Shift (Phim -> Thương mại) |
+| **S1b** | **Few-shot MD** | model S1 + 500 Amazon | Amazon (EN) | Vượt qua lệch miền nhờ Fine-tuning |
 | **S2** | **Multi-task MD** | IMDb, Yelp | Amazon (EN) | Học đa nhiệm để tổng quát hóa |
 | **S3** | **DANN MD** | IMDb, Yelp | Amazon (EN) | Căn chỉnh không gian vector miền |
 | **S4** | **Zero-shot ML** | IMDb (EN), Amazon (FR) | VSFC (VI) | Language Shift (EN/FR -> VI) |

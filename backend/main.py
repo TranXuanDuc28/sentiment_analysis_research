@@ -64,6 +64,26 @@ def main():
         tt, tl, td, tla = load_amazon_split("english", "all", "test", BASE_TEST)
         save_results(evaluate_model(model, make_dataloader(tt, tl, td, tla, tokenizer, BATCH_SIZE), device, "S1_MD_Baseline"), "results/results_s1.json")
 
+    # --- S1b: Few-shot Domain Adaptation (IMDb+Yelp -> Amazon EN) ---
+    if args.s in ["0", "1b"]:
+        print_banner("Scenario 1b: Few-shot Domain Adaptation (Amazon EN)")
+        # Load model S1 làm nền tảng
+        model_s1b = BaseModel(config["model"]["name"])
+        if os.path.exists("checkpoints/model_s1_multidomain.pt"):
+            model_s1b.load_state_dict(torch.load("checkpoints/model_s1_multidomain.pt", map_location=device))
+        
+        t_amz, l_amz, d_amz, la_amz = load_amazon_split("english", "all", "train", FEW_SHOT)
+        v_amz, v_l, v_d, v_la = load_amazon_split("english", "all", "test", BASE_TEST)
+        
+        if not os.path.exists("checkpoints/model_s1b_finetuned.pt"):
+            tr_ld = make_dataloader(t_amz, l_amz, d_amz, la_amz, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+            vl_ld = make_dataloader(v_amz, v_l, v_d, v_la, tokenizer, batch_size=BATCH_SIZE)
+            model_s1b = train_model(model_s1b, tokenizer, tr_ld, vl_ld, EPOCHS, LR/5.0, device, compute_class_weights(l_amz))
+            torch.save(model_s1b.state_dict(), "checkpoints/model_s1b_finetuned.pt")
+        else: model_s1b.load_state_dict(torch.load("checkpoints/model_s1b_finetuned.pt", device))
+        
+        save_results(evaluate_model(model_s1b, make_dataloader(v_amz, v_l, v_d, v_la, tokenizer, BATCH_SIZE), device, "S1b_MD_FewShot"), "results/results_s1b.json")
+
     # --- S2: Multidomain Multi-task Learning ---
     if args.s in ["0", "2"]:
         print_banner("Scenario 2: Multidomain Multi-task Learning (IMDb + Yelp)")
