@@ -55,14 +55,19 @@ Hệ thống giới hạn nghiêm ngặt số lượng mẫu thông qua tham s�
 
 ## 4. Phân bổ Dữ liệu trong các Kịch bản Thực nghiệm (14 Scenarios)
 
-| # | Nhóm Kịch bản | Dữ liệu Train (Source) | Dữ liệu Test (Target) | Khó khăn |
+| # | Nhóm| Kịch bản | feature area | Dữ liệu Nguồn | Dữ liệu Đích | Thách thức chính |
 |---|---|---|---|---|
-| **S1-S8** | **Multidomain (Chỉ Tiếng Anh)** | IMDb, Yelp | Amazon | Lệch miền (Domain Shift) |
-| **S9** | **Domain SFT** | IMDb/Yelp + 500 Amazon | Amazon | Vượt qua lệch miền nhờ Fine-tuning |
-| **S1b, S2, S3** | **Multilingual (Zero-shot & Joint)** | IMDb (EN), VSFC (VI) | VSFC (VI) | Lệch ngôn ngữ (Language Shift) |
-| **S12** | **Language SFT** | IMDb (EN) + 500 VSFC | VSFC (VI) | Vượt qua rào cản ngôn ngữ nhờ Fine-tuning |
-| **S13** | **Translation-Based** | Khởi tạo mô hình IMDb (EN) | VSFC (VI) đã dịch sang (EN) | Đánh giá chất lượng dịch máy (MT) |
-| **S10, S14** | **Double Shift (Unified)** | IMDb + Yelp (EN) | VSFC (VI) | Lệch CẢ miền VÀ ngôn ngữ |
+| **S1** | **Baseline Multidomain** | IMDb, Yelp | Amazon (EN) | Domain Shift (Phim -> Thương mại) |
+| **S2** | **Multi-task MD** | IMDb, Yelp | Amazon (EN) | Học đa nhiệm để tổng quát hóa |
+| **S3** | **DANN MD** | IMDb, Yelp | Amazon (EN) | Căn chỉnh không gian vector miền |
+| **S4** | **Zero-shot ML** | IMDb (EN), Amazon (FR) | VSFC (VI) | Language Shift (EN/FR -> VI) |
+| **S4b** | **Few-shot ML** | model S4 + 500 VSFC | VSFC (VI) | Cải tiến S4 bằng Fine-tuning |
+| **S5** | **Translation ML** | IMDb (EN) | VSFC -> EN | Dịch máy (Machine Translation) |
+| **S6** | **Joint Training** | EN, FR, VI | VSFC (VI) | Huấn luyện đồng thời đa ngôn ngữ |
+| **S7** | **Unified Zero-shot**| IMDb (EN) | VSFC (VI) | Double Shift (Domain + Language) |
+| **S8** | **Unified DANN** | EN + FR + Yelp | VSFC (VI) | Đối nghịch hóa không gian vector |
+| **S9** | **Unified Multi-task**| EN, FR, VI, Yelp | VSFC (VI) | Khung giải pháp hợp nhất đa nhiệm |
+| **S10-S12**| **Ablation Study** | Tương đương S3, S4, S8 | Amazon/VSFC | So sánh XLM-R với mBERT |
 
 ---
 

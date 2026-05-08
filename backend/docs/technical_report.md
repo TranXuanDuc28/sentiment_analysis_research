@@ -21,8 +21,10 @@ Dựa trên mã nguồn và kết quả chạy thực tế, các kỹ thuật sa
 1.  **DANN & GRL**: Sử dụng mạng đối nghịch để đạt **Macro F1-score 0.8922** trên kịch bản Multidomain (S3).
 2.  **Early Stopping**: Cơ chế tự động dừng huấn luyện sau 3 epoch không cải thiện để tránh Overfitting (đã kích hoạt thành công ở Epoch 4 của S3).
 3.  **Multi-task Learning (MTL)**: Tích hợp đầu phân loại Miền và Ngôn ngữ cùng với tác vụ Cảm xúc chính.
-4.  **Zero-shot Cross-lingual**: Chuyển giao tri thức từ EN sang VI thông qua không gian vector XLM-R.
-5.  **Adversarial Alignment Visualization**: Sử dụng **t-SNE** để trực quan hóa sự hội tụ của dữ liệu Source và Target.
+4.  **Zero-shot Cross-lingual Transfer**: Khả năng dự đoán cảm xúc trên tiếng Việt dù chỉ được huấn luyện trên tiếng Anh và tiếng Pháp.
+5.  **Few-shot Fine-tuning (S4b)**: Tinh chỉnh mô hình đa ngôn ngữ với một lượng dữ liệu cực nhỏ (500 mẫu) để tối ưu hóa cho ngôn ngữ mục tiêu.
+6.  **Unsupervised Domain Adaptation**: Sử dụng dữ liệu miền đích (Target) không có nhãn để căn chỉnh (Alignment) không gian vector.
+7.  **Adversarial Alignment Visualization**: Sử dụng **t-SNE** để trực quan hóa sự hội tụ của dữ liệu Source và Target.
 
 ---
 

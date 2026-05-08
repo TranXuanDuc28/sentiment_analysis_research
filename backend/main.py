@@ -135,6 +135,24 @@ def main():
         tt, tl, td, tla = load_vsfc("test", BASE_TEST)
         save_results(evaluate_model(model_src, make_dataloader(tt, tl, td, tla, tokenizer, BATCH_SIZE), device, "S4_ML_ZeroShot"), "results/results_s4.json")
 
+    # --- S4b: Multi-source Cross-lingual Target Fine-Tuning (IMDb[EN]+Amazon[FR] -> VSFC[VI]) ---
+    if args.s in ["0", "4b"]:
+        print_banner("Scenario 4b: Cross-lingual Target Fine-Tuning (Few-shot VI)")
+        t_vi, l_vi, d_vi, la_vi = load_vsfc("train", FEW_SHOT)
+        v_vi, v_l, v_d, v_la = load_vsfc("test", BASE_TEST) # Dùng test làm val cho few-shot
+        
+        model_s4b = BaseModel(config["model"]["name"])
+        model_s4b.load_state_dict(model_src.state_dict()) # Start from EN+FR weights
+        
+        if not os.path.exists("checkpoints/model_s4b_finetuned.pt"):
+            tr_ld = make_dataloader(t_vi, l_vi, d_vi, la_vi, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+            vl_ld = make_dataloader(v_vi, v_l, v_d, v_la, tokenizer, batch_size=BATCH_SIZE)
+            model_s4b = train_model(model_s4b, tokenizer, tr_ld, vl_ld, EPOCHS, LR/5.0, device, compute_class_weights(l_vi))
+            torch.save(model_s4b.state_dict(), "checkpoints/model_s4b_finetuned.pt")
+        else: model_s4b.load_state_dict(torch.load("checkpoints/model_s4b_finetuned.pt", device))
+        
+        save_results(evaluate_model(model_s4b, make_dataloader(v_vi, v_l, v_d, v_la, tokenizer, BATCH_SIZE), device, "S4b_ML_FewShot"), "results/results_s4b.json")
+
     # --- S5: Translation-Based Baseline (VI -> EN) ---
     if args.s in ["0", "5"]:
         print_banner("Scenario 5: Translation-Based Baseline (VI -> EN)")
