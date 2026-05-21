@@ -21,7 +21,7 @@ from src.utils import print_banner, save_results, set_seed
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--s", type=str, default="0", help="Scenario to run (0=all, 1-12)")
+    parser.add_argument("--s", type=str, default="0", help="Scenario to run (0=all, 0v, 1, 1a, 1b, 2-12)")
     args = parser.parse_args()
 
     with open("config.yaml", "r", encoding="utf-8") as f:
@@ -63,6 +63,23 @@ def main():
         else: model.load_state_dict(torch.load("checkpoints/model_s1_multidomain.pt", device))
         tt, tl, td, tla = load_amazon_split("english", "all", "test", BASE_TEST)
         save_results(evaluate_model(model, make_dataloader(tt, tl, td, tla, tokenizer, BATCH_SIZE), device, "S1_MD_Baseline"), "results/results_s1.json")
+
+    # --- S1a: Single-source Transfer Learning (IMDb -> Amazon) ---
+    if args.s in ["0", "1a"]:
+        print_banner("Scenario 1a: Single-source Transfer Learning (IMDb -> Amazon)")
+        t_tr, l_tr, d_tr, la_tr = load_imdb("train", max_samples=BASE_TRAIN)
+        t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_tr, l_tr, d_tr, la_tr, test_size=0.2, random_state=42)
+        
+        model = BaseModel(config["model"]["name"])
+        if not os.path.exists("checkpoints/model_s1a_single.pt"):
+            tr_ld = make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+            vl_ld = make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer, batch_size=BATCH_SIZE)
+            model = train_model(model, tokenizer, tr_ld, vl_ld, EPOCHS, LR, device, compute_class_weights(l_tr))
+            torch.save(model.state_dict(), "checkpoints/model_s1a_single.pt")
+        else: model.load_state_dict(torch.load("checkpoints/model_s1a_single.pt", device))
+        
+        tt, tl, td, tla = load_amazon_split("english", "all", "test", BASE_TEST)
+        save_results(evaluate_model(model, make_dataloader(tt, tl, td, tla, tokenizer, BATCH_SIZE), device, "S1a_SingleSource_TL"), "results/results_s1a.json")
 
     # --- S1b: Few-shot Domain Adaptation (IMDb+Yelp -> Amazon EN) ---
     if args.s in ["0", "1b"]:
@@ -134,6 +151,23 @@ def main():
     # =========================================================================
     # CHẶNG 2: THÁCH THỨC ĐA NGÔN NGỮ (MULTILINGUAL ANALYSIS)
     # =========================================================================
+
+    # --- S0: Monolingual Baseline (Vietnamese -> Vietnamese) ---
+    if args.s in ["0", "0v"]:
+        print_banner("Scenario 0: Monolingual Baseline (VI -> VI)")
+        t_vi, l_vi, d_vi, la_vi = load_vsfc("train", BASE_TRAIN)
+        t_tr, t_vl, l_tr, l_vl, d_tr, d_vl, la_tr, la_vl = train_test_split(t_vi, l_vi, d_vi, la_vi, test_size=0.2, random_state=42)
+        
+        model_mono = BaseModel(config["model"]["name"])
+        if not os.path.exists("checkpoints/model_s0_mono_vi.pt"):
+            tr_ld = make_dataloader(t_tr, l_tr, d_tr, la_tr, tokenizer, batch_size=BATCH_SIZE, shuffle=True)
+            vl_ld = make_dataloader(t_vl, l_vl, d_vl, la_vl, tokenizer, batch_size=BATCH_SIZE)
+            model_mono = train_model(model_mono, tokenizer, tr_ld, vl_ld, EPOCHS, LR, device, compute_class_weights(l_tr))
+            torch.save(model_mono.state_dict(), "checkpoints/model_s0_mono_vi.pt")
+        else: model_mono.load_state_dict(torch.load("checkpoints/model_s0_mono_vi.pt", device))
+        
+        tt, tl, td, tla = load_vsfc("test", BASE_TEST)
+        save_results(evaluate_model(model_mono, make_dataloader(tt, tl, td, tla, tokenizer, BATCH_SIZE), device, "S0_Monolingual_VI"), "results/results_s0.json")
 
     model_src_path = "checkpoints/model_src_en_fr.pt"
     model_src = BaseModel(config["model"]["name"])
