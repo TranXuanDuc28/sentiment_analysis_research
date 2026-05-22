@@ -61,12 +61,32 @@ def evaluate_model(model, dataloader, device="cuda", scenario_name="Unknown"):
         import matplotlib.pyplot as plt
         import seaborn as sns
         
+        SCENARIO_TITLES = {
+            "S1_SingleSource_TL": "S1: Single-source TL",
+            "S2_MD_Baseline": "S2: Multi-source Baseline",
+            "S3_MD_FewShot": "S3: Few-shot Domain Adaptation",
+            "S4_MD_MTL": "S4: Multi-task Learning",
+            "S5_Multidomain_DANN": "S5: Multidomain DANN",
+            "S6_Monolingual_VI": "S6: Monolingual VI Baseline",
+            "S7_ML_ZeroShot": "S7: Multilingual Zero-shot",
+            "S8_ML_FewShot": "S8: Multilingual Few-shot",
+            "S9_ML_Translation": "S9: Translation-based Method",
+            "S10_UN_FewShot": "S10: Unified Few-shot Target Fine-Tuning",
+            "S11_UN_ZeroShot": "S11: Unified Zero-shot",
+            "S12_UN_DANN": "S12: Unified DANN",
+            "S13_UN_MultiTask": "S13: Unified Multi-task",
+            "S14_mBERT_MD": "S14: mBERT MD DANN",
+            "S15_mBERT_ML": "S15: mBERT ML Zero-shot",
+            "S16_mBERT_UN": "S16: mBERT UN DANN"
+        }
+        clean_title = SCENARIO_TITLES.get(scenario_name, scenario_name)
+        
         cm = confusion_matrix(all_labels, all_preds)
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=target_names, yticklabels=target_names)
         plt.xlabel('Predicted')
         plt.ylabel('Actual')
-        plt.title(f'Confusion Matrix - {scenario_name}')
+        plt.title(f'Confusion Matrix - {clean_title}')
         
         os.makedirs("results/plots", exist_ok=True)
         plot_path = f"results/plots/cm_{scenario_name.lower().replace(' ', '_')}.png"
