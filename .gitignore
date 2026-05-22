@@ -4,8 +4,9 @@
 *.7z
 
 # Loại bỏ dữ liệu và kết quả huấn luyện (thường rất nặng)
-backend/data/
 backend/checkpoints/
+backend/results/
+backend/data/
 
 # Loại bỏ các file tạm của Python
 __pycache__/

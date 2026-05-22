@@ -1,0 +1,108 @@
+--- Page 1 ---
+Multidomain Sentiment AnalysisSentiment Analysis
+DR. TRAN UYEN TRANG
+--- Page 2 ---
+Multidomain Sentiment Analysis1. Multidomain Sentiment Analysis2. Challenge 2.1. Diverse words and contexts     2.2. Data heterogeneity3. Techniques and approaches3.1. Transfer Learning3.2. Domain Adaptation3.3. Multi-task Learning
+--- Page 3 ---
+Multidomain Sentiment Analysis
+
+--- Page 4 ---
+Multidomain Sentiment Analysis: Challenge
+LANGUAGE AND CONTEXT DIVERSITY IN DIFFERENT DOMAINS
+DATA HETEROGENEITY
+LACK OF DATA ANNOTATION IN EACH DOMAIN
+DIFFICULTY IN MAINTAINING AND UPDATING MODELS FOR EACH DOMAIN. 
+--- Page 5 ---
+Solution
+Building a sentiment analysis model that can generalize across multiple domains
+--- Page 6 ---
+Techniques and Approaches
+Transfer Learning
+Domain Adaptation
+Multi-task Learning
+--- Page 7 ---
+Transfer Learning
+Transfer learning isa machine learning technique in which knowledge gained through one task or dataset is used to improve model performance on another related task and/or different dataset. In other words, transfer learning uses what has been learned in one setting to improve generalization in another setting.
+Transfer learning uses pre-trained models from one machine learning task or dataset to improve performance and generalizability on a related task or dataset.For example, for image classification, knowledge gained while learning to recognize dogs could be applied when trying to recognize cats.
+--- Page 8 ---
+--- Page 9 ---
+Transfer Learning: Approaches
+Fine-tuningApply the process of fine-tuning a pre-trained model on a new dataset 
+Feature ExtractionFind the domain-general/invariant features
+--- Page 10 ---
+Transfer Learning: Approaches
+Multi-sourceMix domains
+--- Page 11 ---
+Transfer Learning: Approaches•Feature-based Transfer Learning•Pretrained model-based Transfer Learning•Fine-tuning BERT, RoBERTa, DeBERTa, etc.)•Domain-Adaptive Pretraining•Multi-source Transfer Learning •Mix data and train a general model.
+--- Page 12 ---
+Pretrained model-based Transfer Learning•A pre-trained model for one task will be fine-tuned for a new related task. •Save time and resources in training model.•Improve performance•Applying transfer learning from a general domain to a specific domain.§Ex: Using an SA trained model on Twitter to analyze sentiment in the medical field.
+
+--- Page 13 ---
+MechanismChoose a Source modelFine-tuningApply for new task (Inference)
+
+--- Page 14 ---
+Mechanism
+•Collect and prepare target domain dataset•Clean data •Process data
+Data preparation 
+•Pre-trained model: BERT, GPT-3, RoBERTa, XLNet, T5 …Model choosing
+--- Page 15 ---
+Mechanism•Fine-tuning model in target domain dataset•Hyperparameters tuning•Adjust the last layers of the model
+Fine-tuning model 
+•Evaluate the model performance after fine-tuning•Further fine-tune for high performance
+Evaluation and improvement 
+--- Page 16 ---
+Pre-trained models in transfer learning
+BERTGPT-3
+RoBERTa XLNet
+--- Page 17 ---
+Transfer Learning vs. Domain Adaption
+
+--- Page 18 ---
+Domain Adaptation
+Adapting a model that was trained on a source domain to a target domain, where the data distribution may differ (in the same problem)
+For example:The source domain : movie reviews.The target domain : product reviews.
+The data distribution may vary in terms of vocabulary/style/tone/or sentiment polarity.
+No label or lack of labels in the target domain.
+--- Page 19 ---
+Domain Adaptation•Adjust models to work well in specific domains.•Improve the model's performance on new domains without retraining from scratch 
+
+--- Page 20 ---
+Domain Adaptation: Important•Improving the performance •Generalizing the model on new domains without requiring a lot of labeled data from the target domain. •It addresses data scarcity by enabling models to leverage existing datasets, thus saving on the costs and efforts of collecting new labeled data.•This approach increases efficiency by reducing the need to develop new models from scratch and broadens the applicability of machine learning across various fields.•Domain adaptation ensures models remain effective and relevant in rapidly changing or privacy-sensitive environments, facilitating better predictions and decision-making in diverse applications.
+--- Page 21 ---
+Domain Adaptation: Important•save time and resources•enable to apply the model to a wider range of scenarios•make models more flexible and effective in real-world applications where data can vary•For example: Having a sentiment classifier that works well on movie reviews •can adapt it to product reviews•can use it to analyze customer feedback, market trends, or competitor analysis.
+--- Page 22 ---
+Domain Adaptation•Source domain (Ds): labeled data•Target domain (Dt): Little or no labeling è Objective: Learn to perform   P(f(Xs)) ≈ P(f(Xt))
+--- Page 23 ---
+Domain Adaptation: Approaches•Fine-tuning based Domain Adaption •Retrain the pretrained model on the target domain data •Feature based Domain Adaptation•Reduce domain distribution differences•Multi-source Domain Adaptation•Use data from multiple source domains to train the model for a specific target domain•Leverage multiple data sources (with different distributions and styles) to learn a common feature•Help model generalize better to the target domain.
+--- Page 24 ---
+Domain Adaptation: Implementation Process•Data Preparation•Collect and prepare data from source domain and the target domain•Select and train model•Train the model on source domain data•Model Fine-tuning •Use domain adaptation techniques to adapt the model to the target domain•Evaluation and improvement•Evaluate the model's performance after fine-tuning•Further fine-tune for good performance
+--- Page 25 ---
+Domain Adaptation: Application
+NLP (sentiment analysis on social media text)
+Computer Vision (medical image analysis)
+Robotics (adapting robot behavior from simulation to real environments)
+--- Page 26 ---
+Multi-task Learning
+•Train model on multiple tasks at the same time. •Ex: Multi-task learning model for sentiment analysis in single domain or multiple domains. •Improve overall model performance (information sharing between tasks)•Increase model generalization ability
+--- Page 27 ---
+Multi-task Learning: Methods
+•Hard Parameter Sharing•Soft Parameter Sharing
+
+--- Page 28 ---
+Multi-task Learning•Goal: share knowledge between tasks to help the model generalize better and avoid overfitting.•A language processing model can both classify the sentiment and predict the topic of the same sentence.•A vision model can both recognize objects and detect locations (bounding boxes).
+--- Page 29 ---
+Hard Parameter Sharing•Most popular architectures in Multitask Learning.•Different tasks share a large part of parameters (shared layers), usually deep feature extractor layers.•Directly share parameters•Then each task has its own output layers (task-specific layers).
+--- Page 30 ---
+shared_encoder = TransformerEncoder()sentiment_head = nn.Linear(768, 3)topic_head = nn.Linear(768, 5)
+--- Page 31 ---
+•Pros•Reduce overfitting•Tasks force model learn common feature•Avoid depend too much on specific noise of each task.•Save resources•Share most parameters •Reduce the number of weights, save memory & training time.•Increase generalization ability•When tasks are related, joint learning helps the model understand the data more deeply.
+--- Page 32 ---
+•Cons•Negative transfer: When tasks are not really related, sharing parameters can reduce the efficiency of each task.•Inflexible: Difficult to adapt when a task requires a significantly different architecture or number of parameters.
+--- Page 33 ---
+Soft Parameter Sharing•Each task has its own model (do not share layers)•But the parameters of these models are constrained to not differ too much through regularization.•Each task has its own architecture, but forces them to learn similar parameters.•Constrain the similarity between parameters.
+--- Page 34 ---
+Multi-task Learning: Implementation Process•Data Preparation•Collect data•Prepare data for multiple tasks•Model design•Designing multitask learning model•Model Training •Train model on different tasks simultaneously•Evaluation and improvement•Evaluate performance on each task•Fine-tuning the model for best performance on all tasks
+--- Page 35 ---
+Examples and Exercises1. Analyze sentiment on product review and movie review data2. Train and evaluate the sentiment analysis model on two domains of the SemEval 2016 dataset•Laptop domain•Restaurant domain
+--- Page 36 ---
+References[1] Transfer Learning for Natural Language Processing, Paul Azunre.[2] Domain Adaptation for Sentiment Analysis, L. Pan et al.[3] Domain Adaptation in Natural Language Processing, Daniel Ortner

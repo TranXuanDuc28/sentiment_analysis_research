@@ -1,0 +1,377 @@
+<svg width="100%" height="100%" viewBox="0 0 800 1600" xmlns="http://www.w3.org/2000/svg" style="background-color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <!-- Drop Shadow Filter for subtle, elegant depth -->
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.04" />
+    </filter>
+    
+    <!-- Marker for clean connection arrows -->
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B" />
+    </marker>
+  </defs>
+
+  <!-- ==================== HEADER ==================== -->
+  <g transform="translate(40, 30)">
+    <rect width="720" height="90" rx="8" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.8" filter="url(#card-shadow)" />
+    <text x="360" y="38" text-anchor="middle" dominant-baseline="middle" fill="#0F172A" font-size="16" font-weight="700" letter-spacing="0.5">KIẾN TRÚC PHÂN TÍCH CẢM XÚC ĐA NGÔN NGỮ &amp; ĐA MIỀN</text>
+    <text x="360" y="65" text-anchor="middle" dominant-baseline="middle" fill="#475569" font-size="12" font-weight="400">Hệ thực nghiệm 16 kịch bản chuyển giao đặc trưng (Domain &amp; Language Transfer) trên Transformer</text>
+  </g>
+
+  <!-- ==================== STEP 1: DATA COLLECTION ==================== -->
+  <g transform="translate(40, 145)">
+    <!-- Container -->
+    <rect width="720" height="155" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.8" filter="url(#card-shadow)" />
+    <!-- Header Block -->
+    <rect width="720" height="35" rx="8" fill="#F8FAFC" />
+    <rect y="25" width="720" height="10" fill="#F8FAFC" />
+    <line x1="0" y1="35" x2="720" y2="35" stroke="#94A3B8" stroke-width="1.2" />
+    <text x="20" y="18" dominant-baseline="middle" fill="#1E293B" font-size="12" font-weight="700">STEP 1: THU THẬP DỮ LIỆU ĐA NGUỒN</text>
+    
+    <!-- Datasets Grid (4 columns) -->
+    <!-- IMDb -->
+    <g transform="translate(20, 50)">
+      <rect width="160" height="85" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="80" y="24" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">IMDb (EN)</text>
+      <text x="80" y="46" text-anchor="middle" fill="#475569" font-size="11" font-weight="500">Miền: Phim ảnh</text>
+      <text x="80" y="66" text-anchor="middle" fill="#64748B" font-size="11" font-weight="400">Nhãn nhị phân: 0 / 1</text>
+    </g>
+    <!-- Yelp -->
+    <g transform="translate(195, 50)">
+      <rect width="160" height="85" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="80" y="24" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">Yelp (EN)</text>
+      <text x="80" y="46" text-anchor="middle" fill="#475569" font-size="11" font-weight="500">Miền: Nhà hàng</text>
+      <text x="80" y="66" text-anchor="middle" fill="#64748B" font-size="11" font-weight="400">Nhãn nhị phân: 0 / 1</text>
+    </g>
+    <!-- Amazon -->
+    <g transform="translate(370, 50)">
+      <rect width="160" height="85" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="80" y="24" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">Amazon (EN/FR)</text>
+      <text x="80" y="46" text-anchor="middle" fill="#475569" font-size="11" font-weight="500">Miền: Sản phẩm</text>
+      <text x="80" y="66" text-anchor="middle" fill="#64748B" font-size="11" font-weight="400">Loại bỏ nhãn Neutral (3★)</text>
+    </g>
+    <!-- VSFC -->
+    <g transform="translate(545, 50)">
+      <rect width="150" height="85" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="75" y="24" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">UIT-VSFC (VI)</text>
+      <text x="75" y="46" text-anchor="middle" fill="#475569" font-size="11" font-weight="500">Miền: Giáo dục</text>
+      <text x="75" y="66" text-anchor="middle" fill="#64748B" font-size="11" font-weight="400">Loại bỏ nhãn Neutral (1)</text>
+    </g>
+  </g>
+
+  <!-- Connector 1 -> 2 -->
+  <line x1="400" y1="300" x2="400" y2="324" stroke="#64748B" stroke-width="2" marker-end="url(#arrowhead)" />
+
+  <!-- ==================== STEP 2: PREPROCESSING ==================== -->
+  <g transform="translate(40, 330)">
+    <rect width="720" height="130" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.8" filter="url(#card-shadow)" />
+    <rect width="720" height="35" rx="8" fill="#F8FAFC" />
+    <rect y="25" width="720" height="10" fill="#F8FAFC" />
+    <line x1="0" y1="35" x2="720" y2="35" stroke="#94A3B8" stroke-width="1.2" />
+    <text x="20" y="18" dominant-baseline="middle" fill="#1E293B" font-size="12" font-weight="700">STEP 2: TIỀN XỬ LÝ &amp; ĐỒNG BỘ HÓA ĐẶC TRƯNG</text>
+    
+    <!-- Preprocessing steps (4 columns) -->
+    <!-- Cleaning -->
+    <g transform="translate(20, 50)">
+      <rect width="160" height="65" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="80" y="22" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">Làm sạch văn bản</text>
+      <text x="80" y="42" text-anchor="middle" fill="#475569" font-size="11" font-weight="400">Lọc tags HTML, nhiễu</text>
+    </g>
+    <!-- Emoji Tokenization -->
+    <g transform="translate(195, 50)">
+      <rect width="160" height="65" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="80" y="22" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">Mã hóa Emoji</text>
+      <text x="80" y="42" text-anchor="middle" fill="#475569" font-size="11" font-weight="400">Nhúng trực tiếp qua Tokenizer</text>
+    </g>
+    <!-- Word Segmentation -->
+    <g transform="translate(370, 50)">
+      <rect width="160" height="65" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="80" y="22" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">Tách từ tiếng Việt</text>
+      <text x="80" y="42" text-anchor="middle" fill="#475569" font-size="11" font-weight="400">Dùng underthesea</text>
+    </g>
+    <!-- Binary label -->
+    <g transform="translate(545, 50)">
+      <rect width="150" height="65" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="75" y="22" text-anchor="middle" fill="#0F172A" font-size="13" font-weight="700">Nhãn nhị phân</text>
+      <text x="75" y="42" text-anchor="middle" fill="#475569" font-size="11" font-weight="400">Positive (1) / Negative (0)</text>
+    </g>
+  </g>
+
+  <!-- Connector 2 -> 3 -->
+  <line x1="400" y1="460" x2="400" y2="484" stroke="#64748B" stroke-width="2" marker-end="url(#arrowhead)" />
+
+  <!-- ==================== STEP 3: EXPERIMENTAL TRAINING ==================== -->
+  <g transform="translate(40, 490)">
+    <rect width="720" height="820" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.8" filter="url(#card-shadow)" />
+    <rect width="720" height="35" rx="8" fill="#F8FAFC" />
+    <rect y="25" width="720" height="10" fill="#F8FAFC" />
+    <line x1="0" y1="35" x2="720" y2="35" stroke="#94A3B8" stroke-width="1.2" />
+    <text x="20" y="18" dominant-baseline="middle" fill="#1E293B" font-size="12" font-weight="700">STEP 3: HUẤN LUYỆN THỰC NGHIỆM (16 KỊCH BẢN)</text>
+    
+    <!-- Backbone selection -->
+    <g transform="translate(160, 50)">
+      <rect width="400" height="45" rx="6" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.2" />
+      <text x="200" y="24" text-anchor="middle" fill="#334155" font-size="13" font-weight="700">Mô hình xương sống (Backbones): XLM-RoBERTa &amp; mBERT</text>
+    </g>
+
+    <!-- Connector lines inside Step 3 -->
+    <path d="M 200 95 L 120 120 M 600 95 L 680 120" stroke="#94A3B8" stroke-width="1.2" />
+
+    <!-- CHẶNG 1: THÁCH THỨC ĐA MIỀN -->
+    <g transform="translate(15, 120)">
+      <rect width="340" height="340" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2" />
+      <rect width="340" height="30" rx="8" fill="#F8FAFC" />
+      <rect y="20" width="340" height="10" fill="#F8FAFC" />
+      <line x1="0" y1="30" x2="340" y2="30" stroke="#94A3B8" stroke-width="1.2" />
+      <text x="170" y="16" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="700">Chặng 1 — Thách thức đa miền (Domain Shift)</text>
+      
+      <!-- Sub-scenarios -->
+      <!-- S1 -->
+      <g transform="translate(15, 40)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S1: Multi-source TL (No Adaptation)</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Dữ liệu: IMDb + Yelp → Amazon</text>
+      </g>
+      <!-- S1a -->
+      <g transform="translate(15, 96)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S1a: Single-source Pretrained TL</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Dữ liệu: IMDb → Amazon</text>
+      </g>
+      <!-- S1b -->
+      <g transform="translate(15, 152)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S1b: Fine-tuning based Domain Adaptation</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Dữ liệu mục tiêu: Few-shot Amazon EN</text>
+      </g>
+      <!-- S2 -->
+      <g transform="translate(15, 208)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S2: Multi-task Learning (Hard Sharing)</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Đa miền song hành: IMDb + Yelp</text>
+      </g>
+      <!-- S3 -->
+      <g transform="translate(15, 264)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S3: Feature-based Domain Adaptation</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Phương pháp: DANN (GRL) + t-SNE</text>
+      </g>
+    </g>
+
+    <!-- CHẶNG 2: THÁCH THỨC ĐA NGÔN NGỮ -->
+    <g transform="translate(365, 120)">
+      <rect width="340" height="340" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2" />
+      <rect width="340" height="30" rx="8" fill="#F8FAFC" />
+      <rect y="20" width="340" height="10" fill="#F8FAFC" />
+      <line x1="0" y1="30" x2="340" y2="30" stroke="#94A3B8" stroke-width="1.2" />
+      <text x="170" y="16" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="700">Chặng 2 — Thách thức đa ngôn ngữ (Language Shift)</text>
+      
+      <!-- Sub-scenarios -->
+      <!-- S0 -->
+      <g transform="translate(15, 40)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S0: Monolingual VI Baseline</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Dữ liệu chuẩn nội bộ: VSFC → VSFC</text>
+      </g>
+      <!-- S4 -->
+      <g transform="translate(15, 96)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10" font-weight="700">S4: Cross-lingual TL based on Multilingual Models</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Chuyển giao Zero-shot: EN + FR → VI</text>
+      </g>
+      <!-- S4b -->
+      <g transform="translate(15, 152)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S4b: Cross-lingual FT for Target Language</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Tinh chỉnh chéo ngôn ngữ: Few-shot VI</text>
+      </g>
+      <!-- S5 -->
+      <g transform="translate(15, 208)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S5: Translation-Based Method</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Dịch máy: VI → EN Pipeline</text>
+      </g>
+      <!-- S6 -->
+      <g transform="translate(15, 264)">
+        <rect width="310" height="46" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S6: Concurrent Multilingual Joint Training</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Huấn luyện đồng thời: EN + FR + VI</text>
+      </g>
+    </g>
+
+    <!-- Connectors middle inside Step 3 -->
+    <path d="M 185 460 L 185 490 M 535 460 L 535 490" stroke="#94A3B8" stroke-width="1.2" />
+
+    <!-- CHẶNG 3: KHUNG HỢP NHẤT DANN -->
+    <g transform="translate(15, 490)">
+      <rect width="340" height="310" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2" />
+      <rect width="340" height="30" rx="8" fill="#F8FAFC" />
+      <rect y="20" width="340" height="10" fill="#F8FAFC" />
+      <line x1="0" y1="30" x2="340" y2="30" stroke="#94A3B8" stroke-width="1.2" />
+      <text x="170" y="16" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="700">Chặng 3 — Giải pháp hợp nhất (Unified)</text>
+      
+      <!-- S7 -->
+      <g transform="translate(15, 40)">
+        <rect width="310" height="48" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S7: Unified Cross-lingual Domain Adaptation</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Zero-shot ngôn ngữ &amp; miền đồng thời</text>
+      </g>
+      <!-- S8 (Highlighted with a clean gray card outline to make it stand out professionally) -->
+      <g transform="translate(15, 96)">
+        <rect width="310" height="62" rx="4" fill="#F1F5F9" stroke="#475569" stroke-width="2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S8: Unified Feature-based DA &amp; Cross-lingual</text>
+        <text x="12" y="34" fill="#334155" font-size="9.5">DANN đối nghịch miền + ngôn ngữ chéo sang VI</text>
+        <text x="12" y="48" fill="#1E293B" font-size="9" font-weight="700">★ Mô hình tối ưu được dùng để Triển khai API</text>
+      </g>
+      <!-- S9 -->
+      <g transform="translate(15, 166)">
+        <rect width="310" height="48" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S9: Unified Multi-task Learning (Hard Sharing)</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Học song hành: Cảm xúc + Miền + Ngôn ngữ</text>
+      </g>
+      <!-- t-SNE -->
+      <g transform="translate(15, 222)">
+        <rect width="310" height="40" rx="4" fill="#F8FAFC" stroke="#94A3B8" stroke-dasharray="3,3" stroke-width="1.2" />
+        <text x="155" y="17" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="500">Trực quan hóa Phân bố Không gian Vector</text>
+        <text x="155" y="31" text-anchor="middle" fill="#475569" font-size="9.5">Biểu đồ t-SNE phân tích hội tụ miền cho S8</text>
+      </g>
+      <!-- Extra details inside Chặng 3 parent card to align heights -->
+      <g transform="translate(15, 270)">
+        <text x="155" y="15" text-anchor="middle" fill="#64748B" font-size="10" font-style="italic">Thực nghiệm trên XLM-RoBERTa</text>
+      </g>
+    </g>
+
+    <!-- CHẶNG 4: NGHIÊN CỨU ĐỐI SÁNH -->
+    <g transform="translate(365, 490)">
+      <rect width="340" height="310" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2" />
+      <rect width="340" height="30" rx="8" fill="#F8FAFC" />
+      <rect y="20" width="340" height="10" fill="#F8FAFC" />
+      <line x1="0" y1="30" x2="340" y2="30" stroke="#94A3B8" stroke-width="1.2" />
+      <text x="170" y="16" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="700">Chặng 4 — So sánh mô hình (Ablation Study)</text>
+      
+      <!-- S10 -->
+      <g transform="translate(15, 40)">
+        <rect width="310" height="48" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S10: mBERT Feature-based Domain Adaptation</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Đối sánh trực tiếp với S3 (XLM-R)</text>
+      </g>
+      <!-- S11 -->
+      <g transform="translate(15, 96)">
+        <rect width="310" height="48" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S11: mBERT Cross-lingual TL based on Multilingual</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">Đối sánh trực tiếp với S4 (XLM-R)</text>
+      </g>
+      <!-- S12 -->
+      <g transform="translate(15, 152)">
+        <rect width="310" height="62" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+        <text x="12" y="18" fill="#0F172A" font-size="10.5" font-weight="700">S12: mBERT Unified Feature-based DA &amp; Cross-lingual</text>
+        <text x="12" y="34" fill="#64748B" font-size="9.5">mBERT Unified DANN đối nghịch miền + chéo ngôn ngữ</text>
+        <text x="12" y="48" fill="#94A3B8" font-size="9">Đối sánh hiệu năng chuyển giao với S8 (XLM-R)</text>
+      </g>
+      <!-- t-SNE -->
+      <g transform="translate(15, 222)">
+        <rect width="310" height="40" rx="4" fill="#F9FAFB" stroke="#94A3B8" stroke-dasharray="3,3" stroke-width="1.2" />
+        <text x="155" y="17" text-anchor="middle" fill="#4B5563" font-size="10.5" font-weight="500">Đánh giá cấu trúc Nhúng Từ đa ngôn ngữ</text>
+        <text x="155" y="31" text-anchor="middle" fill="#6B7280" font-size="9.5">Biểu đồ t-SNE so sánh độ gom cụm XLM-R vs mBERT</text>
+      </g>
+      <!-- Extra details inside Chặng 4 parent card to align heights -->
+      <g transform="translate(15, 270)">
+        <text x="155" y="15" text-anchor="middle" fill="#94A3B8" font-size="10" font-style="italic">Thực nghiệm trên mBERT</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Connector 3 -> 4 -->
+  <line x1="400" y1="1310" x2="400" y2="1334" stroke="#64748B" stroke-width="2" marker-end="url(#arrowhead)" />
+
+  <!-- ==================== STEP 4: EVALUATION ==================== -->
+  <g transform="translate(40, 1340)">
+    <rect width="720" height="110" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.8" filter="url(#card-shadow)" />
+    <rect width="720" height="35" rx="8" fill="#F8FAFC" />
+    <rect y="25" width="720" height="10" fill="#F8FAFC" />
+    <line x1="0" y1="35" x2="720" y2="35" stroke="#94A3B8" stroke-width="1.2" />
+    <text x="20" y="18" dominant-baseline="middle" fill="#1E293B" font-size="12" font-weight="700">STEP 4: ĐÁNH GIÁ HIỆU NĂNG &amp; TRỰC QUAN HÓA</text>
+    
+    <!-- Eval methods (3 columns) -->
+    <!-- Metrics -->
+    <g transform="translate(20, 50)">
+      <rect width="210" height="48" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="105" y="18" text-anchor="middle" fill="#0F172A" font-size="12" font-weight="700">Accuracy &amp; F1-Macro</text>
+      <text x="105" y="36" text-anchor="middle" fill="#475569" font-size="11" font-weight="400">Đo lường tự động (scikit-learn)</text>
+    </g>
+    <!-- Confusion Matrix -->
+    <g transform="translate(255, 50)">
+      <rect width="210" height="48" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="105" y="18" text-anchor="middle" fill="#0F172A" font-size="12" font-weight="700">Confusion Matrix</text>
+      <text x="105" y="36" text-anchor="middle" fill="#475569" font-size="11" font-weight="400">Sinh ảnh tĩnh results/plots/cm_*.png</text>
+    </g>
+    <!-- t-SNE visualization -->
+    <g transform="translate(490, 50)">
+      <rect width="210" height="48" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="105" y="18" text-anchor="middle" fill="#0F172A" font-size="12" font-weight="700">Biểu đồ t-SNE 2D</text>
+      <text x="105" y="36" text-anchor="middle" fill="#475569" font-size="11" font-weight="400">Trực quan hóa hội tụ miền (GRL)</text>
+    </g>
+  </g>
+
+  <!-- Connector 4 -> 5 -->
+  <line x1="400" y1="1450" x2="400" y2="1484" stroke="#64748B" stroke-width="2" marker-end="url(#arrowhead)" />
+
+  <!-- ==================== STEP 5: DEPLOYMENT ==================== -->
+  <g transform="translate(40, 1490)">
+    <!-- Container -->
+    <rect width="720" height="95" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.8" filter="url(#card-shadow)" />
+    <!-- Header Block -->
+    <rect width="720" height="35" rx="8" fill="#F8FAFC" />
+    <rect y="25" width="720" height="10" fill="#F8FAFC" />
+    <line x1="0" y1="35" x2="720" y2="35" stroke="#94A3B8" stroke-width="1.2" />
+    <text x="20" y="18" dominant-baseline="middle" fill="#1E293B" font-size="12" font-weight="700">STEP 5: TRIỂN KHAI HỆ THỐNG THỜI GIAN THỰC (FASTAPI + REACT)</text>
+    
+    <!-- Visual Engine Block -->
+    <g transform="translate(20, 48)">
+      <rect width="210" height="38" rx="6" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.2" />
+      <text x="12" y="16" fill="#0F172A" font-size="10.5" font-weight="700">Bộ não: model_s8_unified_dann.pt</text>
+      <text x="12" y="28" fill="#475569" font-size="8.5">Checkpoint tốt nhất của mô hình Unified DANN</text>
+    </g>
+    
+    <!-- Connecting Arrow to endpoints -->
+    <path d="M 230 67 L 245 67 L 245 67 L 254 67" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrowhead)" />
+
+    <!-- Endpoint Grid (4 mini endpoint cards side-by-side) -->
+    <!-- Predict -->
+    <g transform="translate(262, 48)">
+      <rect width="105" height="38" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <rect x="6" y="6" width="30" height="12" rx="2" fill="#F1F5F9" stroke="#94A3B8" stroke-width="0.5" />
+      <text x="21" y="12" text-anchor="middle" dominant-baseline="middle" fill="#475569" font-size="8" font-weight="800">POST</text>
+      <text x="40" y="12" dominant-baseline="middle" fill="#0F172A" font-size="9" font-weight="700">/api/predict</text>
+      <text x="6" y="28" fill="#64748B" font-size="8">Phân tích nhị phân 0/1</text>
+    </g>
+
+    <!-- Analyze URL -->
+    <g transform="translate(372, 48)">
+      <rect width="105" height="38" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <rect x="6" y="6" width="30" height="12" rx="2" fill="#F1F5F9" stroke="#94A3B8" stroke-width="0.5" />
+      <text x="21" y="12" text-anchor="middle" dominant-baseline="middle" fill="#475569" font-size="8" font-weight="800">POST</text>
+      <text x="40" y="12" dominant-baseline="middle" fill="#0F172A" font-size="8.5" font-weight="700">/api/analyze-url</text>
+      <text x="6" y="28" fill="#64748B" font-size="8">Cào &amp; phân tích VnExpress</text>
+    </g>
+
+    <!-- Compare -->
+    <g transform="translate(482, 48)">
+      <rect width="105" height="38" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <rect x="6" y="6" width="30" height="12" rx="2" fill="#F1F5F9" stroke="#94A3B8" stroke-width="0.5" />
+      <text x="21" y="12" text-anchor="middle" dominant-baseline="middle" fill="#475569" font-size="8" font-weight="800">POST</text>
+      <text x="40" y="12" dominant-baseline="middle" fill="#0F172A" font-size="9" font-weight="700">/api/compare</text>
+      <text x="6" y="28" fill="#64748B" font-size="8">So sánh khía cạnh</text>
+    </g>
+
+    <!-- Domain Analysis -->
+    <g transform="translate(592, 48)">
+      <rect width="108" height="38" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" />
+      <rect x="6" y="6" width="30" height="12" rx="2" fill="#F1F5F9" stroke="#94A3B8" stroke-width="0.5" />
+      <text x="21" y="12" text-anchor="middle" dominant-baseline="middle" fill="#475569" font-size="8" font-weight="800">POST</text>
+      <text x="40" y="12" dominant-baseline="middle" fill="#0F172A" font-size="8.5" font-weight="700">/api/domain...</text>
+      <text x="6" y="28" fill="#64748B" font-size="8">Độ lệch miền 2D động</text>
+    </g>
+  </g>
+
+</svg>

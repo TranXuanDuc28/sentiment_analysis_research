@@ -37,16 +37,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Đường dẫn model tuyệt đối
-MODEL_PATH = os.path.join(parent_dir, "checkpoints", "xlm-roberta-books-en")
+from src.model import DANNModel
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-print(f"[INFO] Loading model from: {MODEL_PATH} on device {device}...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-base_model = XLMRobertaForSequenceClassification.from_pretrained(MODEL_PATH)
+# Tải tokenizer từ checkpoints/xlm-roberta-books-en
+TOKENIZER_PATH = os.path.join(parent_dir, "checkpoints", "xlm-roberta-books-en")
+tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
+
+# Khởi tạo mô hình DANN với 2 nhãn đầu ra (Negative và Positive)
+base_model = DANNModel(model_name="xlm-roberta-base", num_labels=2)
+
+# Load trọng số model_s12_unified_dann.pt đã huấn luyện
+CHECKPOINT_PATH = os.path.join(parent_dir, "checkpoints", "model_s12_unified_dann.pt")
+print(f"[INFO] Loading DANN model weights from: {CHECKPOINT_PATH} on device {device}...")
+if os.path.exists(CHECKPOINT_PATH):
+    base_model.load_state_dict(torch.load(CHECKPOINT_PATH, map_location=device))
+    print("[INFO] DANN model weights loaded successfully!")
+else:
+    print(f"[WARNING] Checkpoint {CHECKPOINT_PATH} not found. Running with default weights.")
+
 base_model.to(device)
 base_model.eval()
-print("[INFO] Model loaded successfully!")
 
 # Bộ nhớ đệm lưu lịch sử (fallback khi không có MongoDB)
 in_memory_history = []
@@ -104,7 +116,7 @@ source_points_raw = []
 for s in source_sentences:
     inputs = tokenizer(s, return_tensors="pt", truncation=True, max_length=128).to(device)
     with torch.no_grad():
-        outputs = base_model.roberta(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+        outputs = base_model.encoder(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
         pooled = outputs.last_hidden_state[:, 0, :]
         proj = torch.matmul(pooled, W_proj).cpu().numpy()[0]
         source_points_raw.append(proj)
@@ -112,9 +124,22 @@ source_points_raw = np.array(source_points_raw)
 source_centroid = source_points_raw.mean(axis=0)
 print("[INFO] Source domain prepared successfully!")
 
+import underthesea
+
+def is_vietnamese(text: str) -> bool:
+    vietnamese_chars = re.compile(r'[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ]', re.IGNORECASE)
+    return bool(vietnamese_chars.search(text))
+
 # Helper tính từ quan trọng (Word Importance / Explanations)
 def compute_token_importance(text, model, tokenizer, device, pred_class):
-    words = re.findall(r'\w+|[^\w\s]', text, re.UNICODE)
+    if is_vietnamese(text):
+        try:
+            words = underthesea.word_tokenize(text)
+        except Exception:
+            words = re.findall(r'\w+|[^\w\s]', text, re.UNICODE)
+    else:
+        words = re.findall(r'\w+|[^\w\s]', text, re.UNICODE)
+        
     if not words:
         return []
     
@@ -123,8 +148,8 @@ def compute_token_importance(text, model, tokenizer, device, pred_class):
     
     inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=128).to(device)
     with torch.no_grad():
-        outputs = model(**inputs)
-        base_probs = torch.softmax(outputs.logits, dim=-1)
+        s_logits, _ = model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+        base_probs = torch.softmax(s_logits, dim=-1)
         base_prob = base_probs[0, pred_class].item()
     
     importance_scores = []
@@ -137,8 +162,8 @@ def compute_token_importance(text, model, tokenizer, device, pred_class):
         
         m_inputs = tokenizer(masked_text, return_tensors="pt", truncation=True, max_length=128).to(device)
         with torch.no_grad():
-            m_outputs = model(**m_inputs)
-            m_probs = torch.softmax(m_outputs.logits, dim=-1)
+            m_s_logits, _ = model(input_ids=m_inputs["input_ids"], attention_mask=m_inputs["attention_mask"])
+            m_probs = torch.softmax(m_s_logits, dim=-1)
             m_prob = m_probs[0, pred_class].item()
             
         score = max(0.0, base_prob - m_prob)
@@ -175,7 +200,7 @@ def extract_aspects(text, model, tokenizer, device):
         sentences = [text]
         
     aspect_results = {}
-    labels = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    labels = {0: "Negative", 1: "Positive"}
     
     for sentence in sentences:
         sentence_lower = sentence.lower()
@@ -187,8 +212,8 @@ def extract_aspects(text, model, tokenizer, device):
         if matched_aspects:
             inputs = tokenizer(sentence, return_tensors="pt", truncation=True, max_length=128).to(device)
             with torch.no_grad():
-                outputs = model(**inputs)
-                pred_class = torch.argmax(outputs.logits, dim=-1).item()
+                s_logits, _ = model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+                pred_class = torch.argmax(s_logits, dim=-1).item()
                 sentiment = labels[pred_class]
             
             for aspect in matched_aspects:
@@ -218,12 +243,12 @@ class CompareRequest(BaseModel):
 async def predict(data: RequestData):
     inputs = tokenizer(data.text, return_tensors="pt", truncation=True, max_length=128).to(device)
     with torch.no_grad():
-        outputs = base_model(**inputs)
-        probs = torch.softmax(outputs.logits, dim=-1)
+        s_logits, _ = base_model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+        probs = torch.softmax(s_logits, dim=-1)
         pred_class = torch.argmax(probs, dim=-1).item()
         confidence = probs[0, pred_class].item()
     
-    labels = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    labels = {0: "Negative", 1: "Positive"}
     sentiment = labels[pred_class]
     
     explanation = compute_token_importance(data.text, base_model, tokenizer, device, pred_class)
@@ -238,8 +263,8 @@ async def predict(data: RequestData):
         "timestamp": datetime.now().isoformat()
     }
     
-    # Lưu vào database
-    await save_prediction(result)
+    # Lưu vào database (dùng copy tránh bị nhiễm _id của MongoDB)
+    await save_prediction(result.copy())
     
     # Fallback lưu vào RAM
     in_memory_history.insert(0, result)
@@ -266,13 +291,13 @@ async def analyze_url(data: UrlRequest):
         comments = ["No reviews or comments could be automatically extracted from this link. Please check the URL again."]
         
     results = []
-    labels = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    labels = {0: "Negative", 1: "Positive"}
     
     for comment in comments[:10]:
         inputs = tokenizer(comment, return_tensors="pt", truncation=True, max_length=128).to(device)
         with torch.no_grad():
-            outputs = base_model(**inputs)
-            probs = torch.softmax(outputs.logits, dim=-1)
+            s_logits, _ = base_model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+            probs = torch.softmax(s_logits, dim=-1)
             pred_class = torch.argmax(probs, dim=-1).item()
             confidence = probs[0, pred_class].item()
             
@@ -288,16 +313,16 @@ async def analyze_url(data: UrlRequest):
         }
         results.append(res)
         
-        # Lưu vào lịch sử
+        # Lưu vào lịch sử (dùng copy tránh bị nhiễm _id của MongoDB)
         history_item = {
             **res,
             "timestamp": datetime.now().isoformat()
         }
-        await save_prediction(history_item)
+        await save_prediction(history_item.copy())
         in_memory_history.insert(0, history_item)
         
     if len(in_memory_history) > 50:
-        in_memory_history = in_memory_history[:50]
+        del in_memory_history[50:]
         
     await manager.broadcast({"type": "NEW_ANALYSIS"})
     return {"url": data.url, "results": results}
@@ -305,7 +330,7 @@ async def analyze_url(data: UrlRequest):
 @app.post("/api/compare")
 async def compare(data: CompareRequest):
     comparison_data = []
-    labels = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    labels = {0: "Negative", 1: "Positive"}
     
     for url in data.urls[:2]:
         comments = extract_text_from_url(url)
@@ -316,8 +341,8 @@ async def compare(data: CompareRequest):
         for comment in comments[:5]:
             inputs = tokenizer(comment, return_tensors="pt", truncation=True, max_length=128).to(device)
             with torch.no_grad():
-                outputs = base_model(**inputs)
-                probs = torch.softmax(outputs.logits, dim=-1)
+                s_logits, _ = base_model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+                probs = torch.softmax(s_logits, dim=-1)
                 pred_class = torch.argmax(probs, dim=-1).item()
                 confidence = probs[0, pred_class].item()
                 
@@ -335,7 +360,7 @@ async def compare(data: CompareRequest):
 async def domain_analysis(data: RequestData):
     inputs = tokenizer(data.text, return_tensors="pt", truncation=True, max_length=128).to(device)
     with torch.no_grad():
-        outputs = base_model.roberta(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+        outputs = base_model.encoder(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
         pooled_target = outputs.last_hidden_state[:, 0, :]
         target_pt_raw = torch.matmul(pooled_target, W_proj).cpu().numpy()[0]
         

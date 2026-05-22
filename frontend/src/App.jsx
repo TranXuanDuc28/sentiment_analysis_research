@@ -188,9 +188,9 @@ function App() {
 
   const getConfidenceColor = (sentiment) => {
     switch (sentiment?.toLowerCase()) {
-      case 'positive': return 'var(--positive)';
-      case 'negative': return 'var(--negative)';
-      default: return 'var(--neutral)';
+      case 'positive': return '#4ade80';
+      case 'negative': return '#f87171';
+      default: return '#fbbf24';
     }
   };
 

@@ -53,22 +53,26 @@ Hệ thống giới hạn nghiêm ngặt số lượng mẫu thông qua tham s�
 
 ---
 
-## 4. Phân bổ Dữ liệu trong các Kịch bản Thực nghiệm (14 Scenarios)
+## 4. Phân bổ Dữ liệu trong các Kịch bản Thực nghiệm (16 Scenarios)
 
-| # | Nhóm| Kịch bản | feature area | Dữ liệu Nguồn | Dữ liệu Đích | Thách thức chính |
+| Mã | Kỹ thuật (Theo slide bài giảng) | Dữ liệu Nguồn | Dữ liệu Đích | Thách thức / Phương pháp |
 |---|---|---|---|---|
-| **S1** | **Baseline Multidomain** | IMDb, Yelp | Amazon (EN) | Domain Shift (Phim -> Thương mại) |
-| **S1b** | **Few-shot MD** | model S1 + 500 Amazon | Amazon (EN) | Vượt qua lệch miền nhờ Fine-tuning |
-| **S2** | **Multi-task MD** | IMDb, Yelp | Amazon (EN) | Học đa nhiệm để tổng quát hóa |
-| **S3** | **DANN MD** | IMDb, Yelp | Amazon (EN) | Căn chỉnh không gian vector miền |
-| **S4** | **Zero-shot ML** | IMDb (EN), Amazon (FR) | VSFC (VI) | Language Shift (EN/FR -> VI) |
-| **S4b** | **Few-shot ML** | model S4 + 500 VSFC | VSFC (VI) | Cải tiến S4 bằng Fine-tuning |
-| **S5** | **Translation ML** | IMDb (EN) | VSFC -> EN | Dịch máy (Machine Translation) |
-| **S6** | **Joint Training** | EN, FR, VI | VSFC (VI) | Huấn luyện đồng thời đa ngôn ngữ |
-| **S7** | **Unified Zero-shot**| IMDb (EN) | VSFC (VI) | Double Shift (Domain + Language) |
-| **S8** | **Unified DANN** | EN + FR + Yelp | VSFC (VI) | Đối nghịch hóa không gian vector |
-| **S9** | **Unified Multi-task**| EN, FR, VI, Yelp | VSFC (VI) | Khung giải pháp hợp nhất đa nhiệm |
-| **S10-S12**| **Ablation Study** | Tương đương S3, S4, S8 | Amazon/VSFC | So sánh XLM-R với mBERT |
+| **S1** | **Single-source Pretrained model-based TL** | IMDb (EN) | Amazon (EN) | Chuyển giao đơn nguồn lên miền mới |
+| **S2** | **Multi-source Transfer Learning (without Adaptation)** | IMDb, Yelp (EN) | Amazon (EN) | Chuyển giao đa nguồn chưa thích ứng |
+| **S3** | **Fine-tuning based Domain Adaptation** | model S2 + 500 Amazon | Amazon (EN) | Thích ứng miền dùng Few-shot |
+| **S4** | **Multi-task Learning (Hard Parameter Sharing)** | IMDb, Yelp (EN) | IMDb, Yelp (EN) | Học song song nhiều miền |
+| **S5** | **Feature-based Domain Adaptation (DANN)** | IMDb, Yelp (EN) | Amazon (EN) | Căn chỉnh vector phân phối bằng GRL |
+| **S6** | **Monolingual VI Baseline** | VSFC (VI) | VSFC (VI) | Đánh giá nội bộ đơn ngữ |
+| **S7** | **Cross-lingual TL based on Multilingual Models** | IMDb (EN), Amazon (FR) | VSFC (VI) | Lệch ngôn ngữ chéo (Zero-shot) |
+| **S8** | **Cross-lingual Fine-tuning for Target Language** | model_src + 500 VSFC | VSFC (VI) | Cải tiến chéo ngôn ngữ dùng Few-shot |
+| **S9** | **Translation-Based Method** | IMDb (EN), Amazon (FR) | VSFC -> EN | Dịch máy + Phân tích cảm xúc |
+| **S10**| **Unified Few-shot Target Fine-Tuning** | model S2 + 500 VSFC | VSFC (VI) | Tinh chỉnh thích ứng đồng thời Miền & Ngôn ngữ |
+| **S11**| **Unified Cross-lingual Domain Adaptation (Zero-shot)** | model S2 (IMDb + Yelp) | VSFC (VI) | Lệch đồng thời cả Miền & Ngôn ngữ (Zero-shot) |
+| **S12**| **Unified Feature-based Domain Adaptation & Cross-lingual Transfer (DANN)** | IMDb, Yelp (EN), Amazon (FR) | VSFC (VI) | Căn chỉnh đối nghịch miền & ngôn ngữ (DANN) |
+| **S13**| **Unified Multi-task Learning (Hard Parameter Sharing)** | IMDb, Yelp (EN), Amazon (FR), VSFC (VI) | VSFC (VI) | Giải pháp hợp nhất đa nhiệm |
+| **S14**| **mBERT Feature-based Domain Adaptation** | IMDb, Yelp (EN) | Amazon (EN) | Đánh giá mBERT tương đương S5 |
+| **S15**| **mBERT Cross-lingual TL based on Multilingual Models** | IMDb (EN), Amazon (FR) | VSFC (VI) | Đánh giá mBERT tương đương S7 |
+| **S16**| **mBERT Unified Feature-based Domain Adaptation & Cross-lingual Transfer** | IMDb, Yelp (EN), Amazon (FR) | VSFC (VI) | Đánh giá mBERT tương đương S12 |
 
 ---
 

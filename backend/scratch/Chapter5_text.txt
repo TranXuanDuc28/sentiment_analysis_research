@@ -1,0 +1,42 @@
+--- Page 1 ---
+MultilingualSentiment AnalysisSentiment Analysis
+DR. TRAN UYEN TRANG
+--- Page 2 ---
+MultilingualSentiment Analysis1. Multilingual Sentiment Analysis2. Challenge 2.1. Diverse linguistic and grammatical structures     2.2. Lack of high-quality annotation data for each language  2.3. Difficulty in maintaining and updating models for multiple languages 3. Techniques and approaches3.1. Multilingual Word Embeddings 3.2. Cross-lingual Transfer Learning  3.3. Translation-Based Methods 
+--- Page 3 ---
+Why is MultilingualSentiment Analysis important?In SA, language detection is a prerequisite
+The language of the post cannot be determined èthe algorithm cannot decode emotional information.•Ask linguists to translate posts into English to calculate the opinion score: not feasible•Integration into the SA model: feasibleèThe challenge in SA for companies operating internationally: their opinion scoring systems are not trained on SA for languages other than English.
+--- Page 4 ---
+MultilingualSentiment Analysis•SentimentAnalysis+Multilanguage=MultilingualSentimentAnalysis•Linguistic and cultural diversity on social networks affects SA èEnglishSA is not enough.•Relationship :Sentiment+language + culture èMultilingualSentimentAnalysishelps break down language barriersècapture valuable opinions in real time.
+
+--- Page 5 ---
+MultilingualSentiment Analysis: Challenge
+•Differences in language structure and grammar •A shortage of quality annotation data for each language•Difficulty in maintaining and updating models for multiple languages
+--- Page 6 ---
+Techniques and Approaches
+1. Multilingual Word Embeddings mBERT, XLM-R : Create multilingual embeddingsEX: Use mBERT to analyze sentiment in English and Vietnamese 
+2. Cross-lingual Transfer Learning Transfer learning from a source language to a target language EX: Train model on English data and apply it to French  
+--- Page 7 ---
+Techniques and Approaches
+3. Translation-Based Methods•Combine machine translation with sentiment analysis in a pipeline where text is first translated and then analyzed.•EX: Translate user reviews from multiple languages into English, then analyze sentiment using an English sentiment analysis model.
+
+--- Page 8 ---
+Multilingual Word Embeddings 
+multilingual word representations in vector spaceallowing words from different languages to be mapped into the same vector spaceThis means that words with equivalent or nearly identical meanings in different languages will be represented by vectors close to each other in this space.
+--- Page 9 ---
+Multilingual Word Embeddings: properties
+General semantic word mapWords with similar meanings will be represented close to each other, regardless of languageEX: "apple" in English and "manzana" in Spanish can be represented by vectors that are close to each other.
+Applied in multilingual problemsmachine translationlanguage classificationmultilingual searchnatural language understanding systems that support multiple languages
+--- Page 10 ---
+Multilingual embeddings: Training methods•Translate words directly•Use a bilingual dictionary or bilingual data to map words between languages•Training with concurrent models•Train a single model with data from multiple languages to create a common vector space•Fine-tuning on additional languages•Extends a monolingual model by fine-tuning with multilingual data to preserve semantics in the vector space.
+--- Page 11 ---
+Cross-lingual Transfer Learning
+•Transfer knowledge from one language to another•NLP models can learn from a source language (ex: English), and then apply that knowledge to a target language (Vietnamese), without having to be completely retrained. 
+--- Page 12 ---
+Cross-lingual Transfer Learning: Methods
+Based on multilingual models mBERT, XLM-R multilingual models trained on data from multiple languageslearning common linguistic representations, allowing knowledge transfer between languages.
+Fine-tuning for target languageuses a training model from the source language, then fine-tunes it with a small amount of data from the target language to improve transfer.
+--- Page 13 ---
+Translation-Based Methods
+•Combine machine translation with sentiment analysis in a pipeline where text is first translated and then analyzed.
+Machine translationSA

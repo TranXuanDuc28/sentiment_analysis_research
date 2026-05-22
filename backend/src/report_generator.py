@@ -10,29 +10,29 @@ if sys.platform == "win32":
 
 # Lộ trình kịch bản: Đối sánh toàn diện (MD, ML, UN, Ablation)
 PHASES = {
-    "Chặng 1: Multidomain (RQ1)": ["S1", "S1A", "S1B", "S2", "S3"],
-    "Chặng 2: Multilingual (RQ2)": ["S0", "S4", "S4B", "S5", "S6"],
-    "Chặng 3: Unified Framework (RQ3)": ["S7", "S8", "S9"],
-    "Chặng 4: Model Ablation (mBERT vs XLM-R)": ["S3", "S10", "S4", "S11", "S8", "S12"]
+    "Chặng 1: Multidomain (RQ1)": ["S1", "S2", "S3", "S4", "S5"],
+    "Chặng 2: Multilingual (RQ2)": ["S6", "S7", "S8", "S9"],
+    "Chặng 3: Unified Framework (RQ3)": ["S11", "S10", "S12", "S13"],
+    "Chặng 4: Model Ablation (mBERT vs XLM-R)": ["S5", "S14", "S7", "S15", "S12", "S16"]
 }
 
 LABELS = {
-    "S0": "Mono VI Baseline",
-    "S1": "MD Baseline",
-    "S1A": "MD Single-source",
-    "S1B": "MD Few-shot",
-    "S2": "MD Multi-task",
-    "S3": "MD DANN (XLM-R)",
-    "S4": "ML Zero-shot (XLM-R)",
-    "S4B": "ML Few-shot",
-    "S5": "ML Translation",
-    "S6": "ML Joint",
-    "S7": "Unified Zero-shot",
-    "S8": "Unified DANN (XLM-R)",
-    "S9": "Unified Multi-task",
-    "S10": "MD DANN (mBERT)",
-    "S11": "ML Zero-shot (mBERT)",
-    "S12": "Unified DANN (mBERT)"
+    "S1": "Single-source Pretrained model-based TL",
+    "S2": "Multi-source Transfer Learning (without Adaptation)",
+    "S3": "Fine-tuning based Domain Adaptation",
+    "S4": "Multi-task Learning (Hard Parameter Sharing)",
+    "S5": "Feature-based Domain Adaptation (DANN)",
+    "S6": "Monolingual VI Baseline",
+    "S7": "Cross-lingual TL based on Multilingual Models",
+    "S8": "Cross-lingual Fine-tuning for Target Language",
+    "S9": "Translation-Based Method",
+    "S10": "Unified Few-shot Target Fine-Tuning",
+    "S11": "Unified Cross-lingual Domain Adaptation (Zero-shot)",
+    "S12": "Unified Feature-based Domain Adaptation & Cross-lingual Transfer (DANN)",
+    "S13": "Unified Multi-task Learning (Hard Parameter Sharing)",
+    "S14": "mBERT Feature-based Domain Adaptation",
+    "S15": "mBERT Cross-lingual TL based on Multilingual Models",
+    "S16": "mBERT Unified Feature-based Domain Adaptation & Cross-lingual Transfer"
 }
 
 def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
@@ -68,13 +68,19 @@ def generate_aggregate_report(results_dir="results", plots_dir="results/plots"):
                             textcoords='offset points', fontweight='bold')
             plt.title(f"{phase_name}\nComparative Analysis", fontsize=13, fontweight='bold')
             plt.ylim(0.0, 1.0)
-            safe_name = phase_name.split(":")[0].replace(" ", "_").lower()
-            plt.savefig(os.path.join(plots_dir, f"report_{safe_name}.png"), bbox_inches='tight', dpi=300)
+            phase_files = {
+                "Chặng 1: Multidomain (RQ1)": "phase_1_multidomain.png",
+                "Chặng 2: Multilingual (RQ2)": "phase_2_multilingual.png",
+                "Chặng 3: Unified Framework (RQ3)": "phase_3_unified.png",
+                "Chặng 4: Model Ablation (mBERT vs XLM-R)": "phase_4_ablation.png"
+            }
+            safe_name = phase_files.get(phase_name, "unknown.png")
+            plt.savefig(os.path.join(plots_dir, safe_name), bbox_inches='tight', dpi=300)
             plt.close()
 
     # 3. BIỂU ĐỒ TỔNG HỢP TẤT CẢ (Aggregate Performance)
     if results:
-        SCENARIO_ORDER = ["S0", "S1", "S1A", "S1B", "S2", "S3", "S4", "S4B", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"]
+        SCENARIO_ORDER = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S11", "S10", "S12", "S13", "S14", "S15", "S16"]
         all_data = [{"Scenario": sid, "F1-Macro": f1} for sid, f1 in results.items()]
         df_all = pd.DataFrame(all_data)
         df_all["Scenario"] = pd.Categorical(df_all["Scenario"], categories=SCENARIO_ORDER, ordered=True)

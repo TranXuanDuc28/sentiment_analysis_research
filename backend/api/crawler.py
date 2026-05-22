@@ -152,6 +152,62 @@ def extract_text_from_url(url: str):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
+        
+        # Đặc cách cho VnExpress
+        if "vnexpress.net" in url:
+            print(f"[VnExpress] Detecting VnExpress article URL: {url}")
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Lấy article ID, site ID và object type một cách thông minh từ HTML
+            article_id = None
+            site_id = "1000000"
+            object_type = "1"
+            
+            # 1. Thử lấy từ các thẻ span chứa cấu hình bình luận
+            comment_span = soup.find('span', class_=lambda c: c and 'txt_num_comment' in c)
+            if comment_span:
+                article_id = comment_span.get('data-objectid')
+                object_type = comment_span.get('data-objecttype', '1')
+                
+            # 2. Fallback tìm ID bài viết từ meta tags hoặc URL nếu không thấy
+            if not article_id:
+                meta_article = soup.find('meta', {'name': 'tt_article_id'})
+                if meta_article:
+                    article_id = meta_article.get('content')
+                else:
+                    match = re.search(r'-(\d+)\.html', url)
+                    if match:
+                        article_id = match.group(1)
+            
+            # 3. Lấy Site ID thực tế (thường nằm ở tt_site_id_new hoặc tt_site_id)
+            meta_site_new = soup.find('meta', {'name': 'tt_site_id_new'})
+            if meta_site_new:
+                site_id = meta_site_new.get('content')
+            else:
+                meta_site = soup.find('meta', {'name': 'tt_site_id'})
+                if meta_site:
+                    site_id = meta_site.get('content')
+                    
+            if article_id:
+                api_url = f"https://usi-saas.vnexpress.net/index/get?objectid={article_id}&objecttype={object_type}&siteid={site_id}&limit=24"
+                print(f"[VnExpress] Calling comment API: {api_url}")
+                api_resp = requests.get(api_url, headers=headers, timeout=10)
+                if api_resp.status_code == 200:
+                    api_data = api_resp.json()
+                    if "data" in api_data and "items" in api_data["data"]:
+                        comments = []
+                        for item in api_data["data"]["items"]:
+                            content = item.get("content")
+                            if content and len(content.strip()) > 10:
+                                comments.append(content.strip())
+                        if comments:
+                            print(f"[VnExpress] Successfully fetched {len(comments)} comments from API.")
+                            return comments[:5]
+            
+            print("[VnExpress] Meta ID not found or API call failed. Falling back to default parsing.")
+            
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
